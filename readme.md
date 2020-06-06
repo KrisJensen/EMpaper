@@ -1,4 +1,5 @@
-Brief overview of the files and folders in this directory
+Brief overview of the files and folders in this directory\
+The EM/ code uses pymaid 0.89, the NEURON/ code uses neuron with python 2.7 
 
 ### EM/ 
 *pickled_data/* - locally saved information from Catmaid for our neurons of interest.
