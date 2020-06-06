@@ -11,11 +11,12 @@ functions for NEURON investigations
 
 from neuron import h, gui
 import matplotlib.pyplot as plt
-plt.rcParams['pdf.fonttype'] = 42
-#import neuron
 import numpy as np
-from neuron_simulator import neuron_simulator
 import pickle
+import random
+plt.rcParams['pdf.fonttype'] = 42
+
+from neuron_simulator import neuron_simulator
 
 
 def intra_inter_variability(neurons = ['PEN2-5R', 'PEN2-6Ra', 'PEN2-6Rb', 'PEN2-7R',
@@ -124,13 +125,40 @@ def intra_inter_variability(neurons = ['PEN2-5R', 'PEN2-6Ra', 'PEN2-6Rb', 'PEN2-
     
 if __name__ == '__main__':
     
-    intra_inter_variability(inputs = ['D7'], repeat = 10, nsyns = range(1,38), savefig = 'results/D7_PEN2_PB',
+    #plot variability plots
+    
+    '''
+    intra_inter_variability(inputs = ['D7'], repeat = 10, nsyns = range(1,38), savefig = 'results/PEN2_input_PB',
                             neurons = ['PEN2-5R', 'PEN2-6Ra', 'PEN2-6Rb', 'PEN2-7R', 'PEN2-7L'],
                             regions = ['EB', 'PB'])
         
-    intra_inter_variability(inputs = ['PEG'], repeat = 10, nsyns = range(1,43), savefig = 'results/PEG_PEN2_EB',
+    intra_inter_variability(inputs = ['PEG'], repeat = 10, nsyns = range(1,43), savefig = 'results/PEN2_input_EB',
                             neurons = ['PEN2-5R', 'PEN2-6Ra', 'PEN2-6Rb', 'PEN2-7R', 'PEN2-7L'],
                             regions = ['EB', 'PB'])
+    '''
+    #plot example plots
     
+    
+    ##### make variability examples with input in PB
+    random.seed(20270606)
+    sim = neuron_simulator(h, v_init = -55.0, tstop = 70.0)
+    neuron = 'PEN2-7R_all.neuron' #pick example neuron
+    sim.read_neuron('./neurons/'+neuron)
+    tofire = list(np.random.choice(sim.syns_in_tid['D7-7R2L'], size=30, replace = False)) #pick 30 random synapses
+    for i, region in enumerate(['EB', 'PB']):
+        sim.fire(tofire, Type = 'ACh', newstim=[25.0, 3, 2.0, 0.2]) #fire an ACh neuron
+        if i == 0: sim.record(['EPG'])
+        elif i == 1: sim.record(sim.syns_in_tid['D7'])
+        sim.run(filename = 'results/example_PEN2_input_PB_record_'+region, write = True, pdf= True)
+        sim.v_vecs_record = [] #reset to allow for new measurements
+        sim.i_vec_in = []
+        sim.netcons = []
+        try:
+            for synapse in tofire: del sim.syns_in[synapse]
+        except:
+            continue
+
+
+        
     
 
