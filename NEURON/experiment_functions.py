@@ -127,7 +127,6 @@ if __name__ == '__main__':
     
     #plot variability plots
     
-    '''
     intra_inter_variability(inputs = ['D7'], repeat = 10, nsyns = range(1,38), savefig = 'results/PEN2_input_PB',
                             neurons = ['PEN2-5R', 'PEN2-6Ra', 'PEN2-6Rb', 'PEN2-7R', 'PEN2-7L'],
                             regions = ['EB', 'PB'])
@@ -135,9 +134,6 @@ if __name__ == '__main__':
     intra_inter_variability(inputs = ['PEG'], repeat = 10, nsyns = range(1,43), savefig = 'results/PEN2_input_EB',
                             neurons = ['PEN2-5R', 'PEN2-6Ra', 'PEN2-6Rb', 'PEN2-7R', 'PEN2-7L'],
                             regions = ['EB', 'PB'])
-    '''
-    #plot example plots
-    
     
     ##### make variability examples with input in PB
     random.seed(20270606)
