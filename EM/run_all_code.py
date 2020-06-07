@@ -71,9 +71,9 @@ for neuron in ['PEN2-5R', 'PEN2-6Ra', 'PEN2-6Rb', 'PEN2-7R',
                   'PEN2-5L', 'PEN2-6La', 'PEN2-6Lb', 'PEN2-7L']:
     vol.get_cons_by_neuron()   
     n = copy.copy( vol.get_neuron(neuron) )
-    t = treeNeuron(n, vol.neuron_inputs[n.neuron_name], vol.neuron_outputs[n.neuron_name])
-    t.add_synapses(vol)
-    t.write_neuron(mydir+n.neuron_name+'_all')
+    t = treeNeuron(n, vol.neuron_inputs[n.neuron_name], vol.neuron_outputs[n.neuron_name]) #construct a tree
+    t.add_synapses(vol) #get synapses from neuropil
+    t.write_neuron(mydir+n.neuron_name+'_all') #write to file
 
 
 

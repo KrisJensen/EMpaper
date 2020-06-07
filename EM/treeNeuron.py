@@ -29,15 +29,11 @@ class treeNeuron():
         self.g0 = neuron2nx(neuron)
         self.inputs = inputs
         self.outputs = outputs
-        
-        
         self.graph_root = neuron.nodes[ neuron.nodes.type == 'root' ].treenode_id.values[0]
-        
         if not neuron.rootnode == 'None':
             self.rootnode = neuron.rootnode
         else:
             self.rootnode = neuron.soma
-            
             
         if type(self.rootnode)==list:
             newroots = []
@@ -102,16 +98,16 @@ class treeNeuron():
         return dic
         
     def add_synapses(self, vol):
-        
+        '''
+        get locations of synapses
+        '''
         cons_in = {\
         'PEN1' : [],\
         'PEN2' : [],\
         'EPG' : [],\
         'PEG' : [],\
         'D7' : [],\
-        'NO-LAL-GAL' : [],\
-        'R' : [],\
-        'GE' : []}
+        'R' : []}
         cons_out = copy.deepcopy(cons_in)
         in_neuron = {}
         out_neuron = {}
@@ -136,7 +132,7 @@ class treeNeuron():
         self.in_byneuron = in_neuron
         
     def add_node(self, nc, nm1, w, Type):
-        #add node to graph
+        '''add node to graph'''
         d = self.diameter( self.neuron, nc, self.rootnode )
         vec = np.random.rand(3) #move in one qudrant only to build a tree
         loc = self.graph.nodes[nm1]['loc']+vec/np.linalg.norm(vec)*w/1000 #new location is old location plus random vector of length w in um (distance from nm1)
@@ -191,17 +187,12 @@ class treeNeuron():
                 self.construct_tree(nc, child = child, inputs=inputs, outputs=outputs, init=False)
             print('finished branchpoint at ', nc)
             return
-
-    def get_parents(self, tid):
-        return [c for c in self.g0.predecessors(n)]
-        
-    def get_children(self, tid):
-        return [c for c in self.g0.successors(n)]
-        
-    def get_distN(self, tid1, tid2):
-        return self.g0.get_edge_data(tid1, tid2)['weight'] #this is the distance
     
-    def write_line_neuron(self, n, node, parent, branch, f): #n and parent are line numbers, node and branch are tids
+    def write_line_neuron(self, n, node, parent, branch, f):
+        '''
+        write a single line of the output file
+        n and parent are line numbers, node and branch are tids
+        '''
         diameter = (float(self.graph.nodes[node]['diameter'])+float(self.graph.nodes[branch]['diameter']))/2 #segment width is avg
         #dist is distance from parent
         f.write('\n'+str(n)+' '+self.graph.nodes[node]['dist']+' '+str(diameter)+' '+str(parent)+' '+str(node))
@@ -253,29 +244,7 @@ class treeNeuron():
                 n = self.new_branch_neuron(suc, n, n-1, f, added)
         return n
 
-    def write_line_swc(self, n, node, parent, f):
-        f.write('\n'+str(n)+' 0 '+self.get_str(self.graph.nodes[node]['loc'])+self.graph.nodes[node]['diameter']+' '+str(parent))
-        return n+1
     
-    def write_swc(self, filename = 'tree'):
-        with open(filename+'.swc', 'w') as f:
-            f.write('#Neuron '+self.neuron.neuron_name) #write some preliminary info
-            f.write('\n#User ktj21')
-            f.write('\n#Jayaraman lab')
-            f.write('\n1 1 0.0 0.0 0.0 '+self.graph.nodes[self.graph_root]['diameter']+' -1')
-            added = [self.graph_root]
-            self.new_branch_swc(self.graph_root, 2, 1, f, added)
-        return
-    
-    def new_branch_swc(self, branch, n, nparent, f, added):
-        '''construct new branch. n counts node number'''
-        for suc in self.graph.successors(branch):
-            if not suc in added:
-                added.append(suc)
-                n = self.write_line_swc(n, suc, nparent, f)
-                print(suc, n, n-1)
-                self.new_branch_swc(suc, n, n-1, f, added)
-        return n
     def get_str(self, loc):
         return str(loc[0])+' '+str(loc[1])+' '+str(loc[2])+' '
     
@@ -291,7 +260,7 @@ if __name__ == '__main__':
         
         vol.get_cons_by_neuron()   
         n = copy.copy( vol.get_neuron(neuron) )
-        t = treeNeuron(n, vol.neuron_inputs[n.neuron_name], vol.neuron_outputs[n.neuron_name])
-        t.add_synapses(vol)
-        t.write_neuron(mydir+n.neuron_name+'_all')
+        t = treeNeuron(n, vol.neuron_inputs[n.neuron_name], vol.neuron_outputs[n.neuron_name]) #construct a tree
+        t.add_synapses(vol) #get synapses from neuropil
+        t.write_neuron(mydir+n.neuron_name+'_all') #write to file
     
