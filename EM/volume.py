@@ -236,10 +236,7 @@ class volume():
                 cn_tables[pre.neuron_name][post.neuron_name]=connections #add to dict
                 
         self.cn_tables = cn_tables
-  
-    def get_catmaid_name(self, neuron): #could write something to get the Catmaid name from neuron instance
-        
-        return name
+
     
     def get_neurons(self, group = 'all'):
         return self.groups[group]
@@ -252,15 +249,12 @@ class volume():
         pre = self.get_neuron(pre)
         skid = self.get_neuron(post).skeleton_id
         
-        #print(type(cn_table))
         if type(cn_table) == str: #if we already have a cn table we can skip this
             if from_connectors: cn_table = cn_table_from_connectors(pre) #get connection table for fragment
             elif cn_table == 'stored': return len(self.cn_tables[pre][post])
             else: cn_table = pre.partners #get connection table from intact neuron
 
         downstream = cn_table[ cn_table.relation=='downstream' ] #we want to look at what this synapses onto
-        
-        #print(downstream)
 
         try: nSyn = downstream[ downstream.skeleton_id == skid ].total.values[0] #this has number of synapses
         except IndexError: nSyn=0 #if there are no synapses
@@ -269,26 +263,6 @@ class volume():
             except IndexError: nSyn = 0
 
         return nSyn        
-            
-    def connections_togroup(self, pre, group, cn_table='None', from_connectors = False):
-        '''given a presynaptic neuron, gives number of synapses to all neurons in group'''
-        synapses=[]
-        
-        if type(cn_table) == str:
-            if from_connectors: cn_table = cn_table_from_connectors(pre)
-            else: cn_table = pre.partners
-            #get all connections from presynaptic neuron
-        
-        for post in group: #find number of synapses to each postsynaptic
-            synapses.append( self.connection_number(pre, post, cn_table, from_connectors) )       
-        return np.sum(synapses), synapses
-        
-    def connections_fromgroup(self, post, group):
-        '''given a postsynaptic neuron, gives number of synapses from all neurons in group'''
-        synapses=[]
-        for pre in group:
-            synapses.append( self.connection_number(pre, post) )       
-        return np.sum(synapses), synapses
     
     def allconnections(self, group1='all', group2='all', file='None', method='w', table = 'none',\
                        heatmap='None', from_connectors = True, show=True, grouping='default', size = (15,15)):
@@ -315,7 +289,6 @@ class volume():
             if not table == 'stored':
                 if from_connectors: cn_table = cn_table_from_connectors(pre)
                 else: cn_table = pre.partners                 
-            
             data.append([])
             for post in group2:
                 if table == 'stored':
@@ -323,17 +296,13 @@ class volume():
                 else:
                     data[-1].append( self.connection_number(pre, post, cn_table=cn_table) ) #find connections to post
             tot += np.sum(data[-1]) #also keep track of total connectivity
-            
         if not file == 'None': #we write our result to a file
             with open('connectivity_matrices/'+file+'.txt', method) as f:
-
                 f.write('{:<10}'.format(' '))
                 for post in group2: f.write( '{:<10}'.format( post.neuron_name[:10] )+' ' )
                 f.write( '\n' )
-
                 for i, pre in enumerate(group1):
                     f.write( '{:<10}'.format( pre.neuron_name[:10] )+' ' )
-                    
                     for j, post in enumerate(group2):
                         f.write( '{:<10}'.format( str(data[i][j])[:10] )+' ' )
                     f.write('\n')
@@ -361,35 +330,25 @@ class volume():
             pickle.dump(cn_table, open('pickled_neurons/neuron_connections/'+self.name+'_'+relation+'_'+neuron.neuron_name+'_pickled', 'wb'))
         else:
             cn_table = pickle.load(open('pickled_neurons/neuron_connections/'+self.name+'_'+relation+'_'+neuron.neuron_name+'_pickled', 'rb'))
-        
         connections = cn_table[ cn_table.relation==relation ] #get all INPUTS/OUTPUTS for a neuron
         
         if relation == 'upstream': self.full_cn_tables_input[neuron.neuron_name] = connections
         if relation == 'downstream': self.full_cn_tables_output[neuron.neuron_name] = connections 
-        
-     
         nconnections = sum(connections.total.values)
         
         return nconnections
         
-        
-    
+
     def get_connection_distribution(self, relation = 'input'):
         '''find the distribution of inputs to each type of neuron from the other types of neurons
         surely this doesn't really work since we don't have the full connectivity of all of our neurons?'''
         
         connections = {}
-        
         for neuron in self.groups['all']:
-            
             print('new neuron', neuron.neuron_name)
-            
             name = neuron.neuron_name
-            
             connections[name] = {}
-            
             connections[name]['tot'] = self.get_total_connections(neuron, relation)
-            
             for group in self.groups.keys():
                 if group != 'all':
                     cons = 0
@@ -398,7 +357,6 @@ class volume():
                         if relation == 'output': cons += len(self.cn_tables[name][partner.neuron_name])
                     connections[name][group]=cons
             print(connections[name])
-                    
         self.connectionDistribution[relation] = connections
             
         return connections
@@ -407,15 +365,14 @@ class volume():
     def plot_connection_distribution(self, relation = 'input', neurons_init='all',\
                                      title='connection_distribution', show=True, estimate=True,
                                      Norm = True, include_unknown = False):
-        
+        '''
+        plot distribution of input/output connections as given by 'relation'
+        if estimate, we do this for extrapolated synapse counts
+        '''
 
         if neurons_init == 'all': neurons_init = self.groups['all']
-        
         neurons = []
-        
         #first we normalize the connection distribution per neuron
-        
-        
         if estimate: connections = copy.deepcopy(self.connectionEstimate[relation])
         else: connections = copy.deepcopy(self.connectionDistribution[relation])
     
@@ -423,28 +380,19 @@ class volume():
         leg = ['PEN1 (8)', 'PEN2 (8)', 'EPG (10)', 'PEG (4)', 'D7 (7)']
         if estimate: leg = ['PEN1 (16)', 'PEN2 (16)', 'EPG (54)', 'PEG (16)', 'D7 (40)']
         colors = [ '#f1c40f', '#cd6155','#27ae60', '#2e86c1', '#c2c2c2']
-        
-            
                   
         if 'R' in self.groups.keys():
             groups.append('R')
             if estimate: leg.append('R (100)')
             else: leg.append('R (7)')
-
-            #colors.append( '#ff6cf8' )
             colors.append( '#d7bde2' )
                           
-        if include_unknown:
+        if include_unknown: #include a category for unknown partners
             colors.append('#e8e8e8')
             leg.append('unknown')
             groups.append('unknown')
                           
-        
         for i, neuron in enumerate(neurons_init):
-            
-            #if int(connections[neuron.neuron_name]['tot']) == 0:
-            #    print('no connections for '+neuron.neuron_name+', not included in plot')
-                
             if int(connections[neuron.neuron_name]['tot']) < 10:
                 print('fewer than 10 connections for '+neuron.neuron_name+', not included in plot')
 
@@ -464,13 +412,12 @@ class volume():
                     if include_unknown:
                         if Norm: connections[neuron.neuron_name]['unknown'] = 1-cum
                         else: connections[neuron.neuron_name]['unknown'] = connections[neuron.neuron_name]['tot']-cum
-        
         N = len(neurons)
         
         fname = 'connectivity_distributions/'+title
         if include_unknown: fname += '_u'
         if not Norm: fname += '_raw'
-        f = open(fname+'.txt', 'w')
+        f = open(fname+'.txt', 'w') #write to a file as well
         vals = []
         for group in groups:
             if group != 'all':
@@ -479,25 +426,19 @@ class volume():
                     vals[-1].append( connections[neuron.neuron_name][group] )
                     f.write(group+' '+neuron.neuron_name+' '+str(connections[neuron.neuron_name][group])+'\n')   
         f.close()
-        
         ind = np.arange(N)    # the x locations for the groups
         width = 0.35       # the width of the bars: can also be len(x) sequence
-        
         ps = []
-
-        
         bottom = np.array( [ 0.0 for x in range(N) ] )
         
+        #plot the results
         fig, ax = plt.subplots(figsize=(10,10))
-        
         for i, val in enumerate(vals):
             print('bottom: ', bottom)
             val = np.maximum(val, 0)
             ps.append( plt.bar(ind, val, width, color=colors[i], bottom=bottom) )
             bottom += np.array(val)
-        
         print(vals)
-
         plt.title(title)
         ax.set_xticks(ind)
         labels = [ ( neuron.neuron_name+' ('+str(self.connectionDistribution[relation][neuron.neuron_name]['tot'])+')' )\
@@ -507,23 +448,19 @@ class volume():
         if Norm: plt.yticks(np.arange(0, 1.1, 0.1))
         
         plt.legend([ p[0] for p in ps ],  leg )
-        
-        #plt.savefig('connectivity_distributions/'+title+'.png', dpi=360, bbox_inches = 'tight')
+
         plt.savefig(fname+'.pdf', dpi=360, bbox_inches = 'tight', transparent=True)
-        #plt.savefig('connectivity_distributions/'+title+'.eps', dpi=360, bbox_inches = 'tight')
-        
+
         if show: plt.show()
     
         
     def heatmap(self, data,  xticks=None, yticks=None, xlabel=None,\
                 ylabel=None, title=None, vmin=None, vmax=None, show='False', size = (15,15) ):
-        '''construct heatmap'''
+        '''construct heatmap of connectivity matrices'''
         
         fig, ax = plt.subplots(figsize=(15,15))
         im = ax.imshow(data, cmap='coolwarm', vmin=vmin, vmax=vmax) #generate heatmap; could add more options
         cb = fig.colorbar(im, shrink=1.1, aspect=5 ) #add colorbar
-        #print([int(lab) for lab in cb.ax.get_yticklabels()])
-        #cb.ax.set_yticklabels(fontsize=int(size[0]/1.5))
         cb.ax.tick_params(labelsize = size[0]/1.5)
 
         ax.set_xticks(np.arange(xticks))
@@ -533,7 +470,6 @@ class volume():
         
         ax.xaxis.set_label_position('top') 
         ax.xaxis.tick_top()
-
         # Rotate the tick labels and set their alignment
         plt.setp(ax.get_xticklabels(), rotation=-45, ha="right", va='bottom', rotation_mode="anchor") #make it look nice
 
@@ -541,27 +477,22 @@ class volume():
         plt.tight_layout()
         print('saving heatmap')
         plt.savefig('connectivity_matrices/'+title+'.png', dpi=360)
-        
         if show: plt.show()
         
     def plot2D(self, neurons='all', color = False, show = True, save='None'):
-        '''plots a neuron in 2 dimensions'''
+        '''plots a neuron in 2 dimensions using the pymaid plot2d function'''
         
         if neurons == 'all': neurons = self.groups['all']
         else: neurons = [self.get_neuron(n) for n in neurons] #neurons to plot
-        
         if type(color) == list: color=color
         elif type(color) == str: color = [color for x in range(len(neurons))]
         else: color = ['red' for i in range(len(neurons))] #can specify colors of neurons
-        
         for i, neuron in enumerate(neurons): #plot all of the neurons on the same set of axes
             try: fig, ax = neuron.plot2d(color=color[i], method='2d',\
                                          connectors=False, ax=ax)
             except:fig, ax = neuron.plot2d(color=color[i], method='2d', connectors=False)
-            
         if not save == 'None': #save the figure
             plt.savefig(save, dpi=360, bbox_inches = 'tight')
-            
         if show: plt.show()
 
     def get_cons_by_neuron(self):
@@ -571,30 +502,15 @@ class volume():
         for neuron in self.groups['all']:
             inp[neuron.neuron_name] = []
             out[neuron.neuron_name] = []
-            
         for n1, dic in self.cn_tables.items():
             for n2, cons in dic.items():
                 for con in cons:
                     if not ( ('GE' in n1) or ('GE' in n2) or ('LAL' in n1) or ('LAL' in n2) ):
                         out[n1].append( con[0] )
                         inp[n2].append( con[1] )
-                        
                         if con[1] == 3785136: print(n1, n2, con)
-                        
                         tot.append( ( con[0], con[1] ) )
-                
         self.neuron_inputs = inp
         self.neuron_outputs = out
         self.all_cons = tot
 
-    def write_connections_file(self, filename = 'cons'):
-        '''writes a .connections file with all connections that can subsequently be read
-        by a NEURON_network object to instantiate compartmental models'''
-        
-        with open(filename, 'w') as f:
-            for n1, dic in self.cn_tables.items():
-                for n2, cons in dic.items():
-                    f.write(n1+' '+n2)
-                    for con in cons: f.write(' '+str(con[0])+','+str(con[1]))
-                    f.write('\n')
-        
