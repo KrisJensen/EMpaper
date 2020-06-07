@@ -285,38 +285,6 @@ def get_connection_estimate_PB(vol):
 
     avgCon['PEG']['input']['EPG'] = np.mean(consin)*PEG_in
     
-    
-    '''
-    PEN1s = [ ['PEN1-6Ra', 'PEN1-6Rb'], ['PEN1-5R'], ['PEN1-5L'], ['PEN1-6La', 'PEN1-6Lb'] ]
-    PEN2s = [ ['PEN2-6Ra', 'PEN2-6Rb'], ['PEN2-5R'], ['PEN2-5L'], ['PEN2-6La', 'PEN2-6Lb'] ]
-    EPGs = [ ['EPG-6Ra', 'EPG-6Rb'], ['EPG-5Ra', 'EPG-5Rb', 'EPG-5Rc'],\
-                  ['EPG-5La', 'EPG-5Lb', 'EPG-5Lc'], ['EPG-6La', 'EPG-6Lb'] ]    
-    PEGs = [ ['PEG-6R'], ['PEG-5R'], ['PEG-5L'], ['PEG-6La'] ]
-    
-    groups = { 'PEN1':PEN1s, 'PEN2':PEN2s, 'PEG':PEGs }
-    
-    consout = []
-    consin = []
-    
-    for label, group in groups.items():
-        
-        consout = []
-        consin = []
-        for i in range(4):
-            for EPG in EPGs[i]:
-                for N in group[i]:
-                    consout.append(vol.cn_tables[EPG][N] / vol.connectionDistribution['output'][EPG]['tot'])
-                    consin.append(vol.cn_tables[EPG][N] / vol.connectionDistribution['input'][N]['tot'])
-
-        avgCon['EPG']['output'][label] = np.mean(consout)*EPG_out
-    
-        if label == 'PEG': ins = PEG_in
-        elif label == 'PEN1': ins = PEN1_in
-        elif label == 'PEN2': ins = PEN2_in
-    
-        avgCon[label]['input']['EPG'] = np.mean(consin)*ins
-    '''
-        
     connectionEstimate['input'] = connections_in
     connectionEstimate['output'] = connections_out
     
@@ -349,42 +317,11 @@ def get_connection_estimate_NO(vol):
         PEN_output = np.mean(counts2)
         
         PEN_avgcounts[PEN] = [PEN_input, PEN_output] 
-        
-        #assume identical interaction between all PENs and NLG
-        #normalize by total output; i.e. calculate as fraction of total output
-        PEN_to_NLG = np.mean( [len(vol.cn_tables[PEN+'-5R']['NO-LAL-G'])/vol.connectionDistribution['output'][PEN+'-5R']['tot'],\
-                                    len(vol.cn_tables[PEN+'-6Ra']['NO-LAL-G'])/vol.connectionDistribution['output'][PEN+'-6Ra']['tot'],\
-                                    len(vol.cn_tables[PEN+'-6Rb']['NO-LAL-G'])/vol.connectionDistribution['output'][PEN+'-6Rb']['tot']] ) 
-        
-        PEN_from_NLG = np.mean( [len(vol.cn_tables['NO-LAL-G'][PEN+'-5R'])/vol.connectionDistribution['input'][PEN+'-5R']['tot'],\
-                                    len(vol.cn_tables['NO-LAL-G'][PEN+'-6Ra'])/vol.connectionDistribution['input'][PEN+'-6Ra']['tot'],\
-                                    len(vol.cn_tables['NO-LAL-G'][PEN+'-6Rb'])/vol.connectionDistribution['input'][PEN+'-6Rb']['tot']] ) 
-        
-        NLG_to_PEN = np.mean( [len(vol.cn_tables['NO-LAL-G'][PEN+'-5R'])/vol.connectionDistribution['output']['NO-LAL-G']['tot'],\
-                                    len(vol.cn_tables['NO-LAL-G'][PEN+'-6Ra'])/vol.connectionDistribution['output']['NO-LAL-G']['tot'],\
-                                    len(vol.cn_tables['NO-LAL-G'][PEN+'-6Rb'])/vol.connectionDistribution['output']['NO-LAL-G']['tot']] )
-    
-        NLG_from_PEN = np.mean( [len(vol.cn_tables[PEN+'-5R']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'],\
-                                    len(vol.cn_tables[PEN+'-6Ra']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'],\
-                                    len(vol.cn_tables[PEN+'-6Rb']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot']] )
-    
-        #get connectivity matrix values for connections between the average PEN and NLG
-        avgCon[PEN]['output']['NO-LAL-G'] = PEN_to_NLG*PEN_output
-        avgCon[PEN]['input']['NO-LAL-G'] = PEN_from_NLG*PEN_input
-        avgCon['NO-LAL-G']['output'][PEN]= NLG_to_PEN*vol.connectionDistribution['output']['NO-LAL-G']['tot']
-        avgCon['NO-LAL-G']['input'][PEN] = NLG_from_PEN*vol.connectionDistribution['input']['NO-LAL-G']['tot']        
-    
-        for P in vol.groups[PEN]: #add NLG input/output to ALL PENs as we expect  NLGs in both noduli
-            connections_in[P.neuron_name]['NO-LAL-G'] = 2*PEN_from_NLG*vol.connectionDistribution['input'][P.neuron_name]['tot'] #~2 NO-LAL-G per nodulus
-            connections_out[P.neuron_name]['NO-LAL-G'] = 2*PEN_to_NLG*vol.connectionDistribution['output'][P.neuron_name]['tot'] 
-    
-        #add PEN connections to NO-L-G
-        connections_in['NO-LAL-G'][PEN] = 8*NLG_from_PEN*vol.connectionDistribution['input']['NO-LAL-G']['tot'] #~8 PEN1 or PEN2 per nodulus
-        connections_out['NO-LAL-G'][PEN] = 8*NLG_to_PEN*vol.connectionDistribution['output']['NO-LAL-G']['tot']
+
 
     for NO in ['L', 'R']: #now consider left and right nodulus separately for these connection estimates
         
-        counts1, counts2, counts3, counts4 = [], [], [], []
+        counts1, counts2 = [], []
         
         #consider interaction of PEN1 with PEN1, PEN2 with PEN2 and PEN1 with PEN2 (both ways)
         for g1 in ['PEN1', 'PEN2']:
@@ -412,268 +349,6 @@ def get_connection_estimate_NO(vol):
                         connections_in[P.neuron_name][g2] = nPartners*mean_PEN_in*vol.connectionDistribution['input'][P.neuron_name]['tot'] 
                         
         
-    connectionEstimate['input'] = connections_in
-    connectionEstimate['output'] = connections_out
-    
-    return connectionEstimate, avgCon
-
-
-def get_connection_estimate_G(vol):
-    '''assume odd PEGs/EPGs/PENs go to dorsal gall and even go to ventral gall
-    assume complete compartmentalization although there is often a single even/odd connection
-    assume that half the GEs are dorsal, half are ventral
-    need to treat EPGs, PEGs, GEs
-    We only have one GE and it does not give output to EPG, so we have to assume that this is a general feature of the system
-    Our PEGs do not talk so we also assume this to be a general feature
-    Since we only have 1 GE, we cannot include GE-GE connections in our estimate. It is not possible to easily
-    estimate how significant this would be. Assume left, right Galls are equivalent
-    We also cannot quantify PEG self-interactions since we only have 1 dorsal and 1 ventral PEG
-    GE seems to be mostly but not exclusively dorsal
-    NO-LAL-Gall extends throughout the gall
-    I have assumed that half our GEs are dorsal and half ventral, but this is not known'''
-    
-    print('res1', vol.connectionDistribution['output']['PEG-5R'])
-    
-    avgCon = {'GE':{}, 'EPG_D':{}, 'EPG_V':{}, 'PEG_D':{}, 'PEG_V':{}, 'NO-LAL-G':{}}
-    for k1, g1 in avgCon.items():
-        g1['input'] = {}
-        g1['output'] = {}
-    
-    connectionEstimate = {}
-    connections_in = copy.deepcopy(vol.connectionDistribution['input'])
-    connections_out = copy.deepcopy(vol.connectionDistribution['output'])
-    
-    counts1, counts2 = [], [] #get total inputs/outputs
-    for EPG in ['EPG-5Ra', 'EPG-5Rb', 'EPG-5Rc','EPG-5La', 'EPG-5Lb', 'EPG-5Lc'] :
-        counts1.append(vol.connectionDistribution['input'][EPG]['tot'])
-        counts2.append(vol.connectionDistribution['output'][EPG]['tot']) 
-    EPG_D_input = np.mean(counts1)
-    EPG_D_output = np.mean(counts2)
-    print(EPG_D_input, EPG_D_output)
-
-    counts1, counts2 = [], [] #get total inputs/outputs
-    for EPG in ['EPG-6Ra', 'EPG-6Rb', 'EPG-6La', 'EPG-6Lb'] :
-        counts1.append(vol.connectionDistribution['input'][EPG]['tot'])
-        counts2.append(vol.connectionDistribution['output'][EPG]['tot']) 
-    EPG_V_input = np.mean(counts1)
-    EPG_V_output = np.mean(counts2)
-    
-    counts1, counts2 = [], [] #get total inputs/outputs
-    for PEG in ['PEG-5R', 'PEG-5L']:
-        counts1.append(vol.connectionDistribution['input'][PEG]['tot'])
-        counts2.append(vol.connectionDistribution['output'][PEG]['tot']) 
-    PEG_D_input = np.mean(counts1)
-    PEG_D_output = np.mean(counts2)
-
-    counts1, counts2 = [], [] #get total inputs/outputs
-    for PEG in ['PEG-6R', 'PEG-6L']:
-        counts1.append(vol.connectionDistribution['input'][PEG]['tot'])
-        counts2.append(vol.connectionDistribution['output'][PEG]['tot']) 
-    PEG_V_input = np.mean(counts1)
-    PEG_V_output = np.mean(counts2)
-    
-    NLG_input = vol.connectionDistribution['input']['NO-LAL-G']['tot']
-    NLG_output = vol.connectionDistribution['output']['NO-LAL-G']['tot']
-    
-    GE_input = vol.connectionDistribution['input']['GE-r1']['tot']
-    GE_output = vol.connectionDistribution['output']['GE-r1']['tot']
-    
-    #consider GE to be dorsal and count only dorsal connecitons, i.e. 5R (NOTE this may be very wrong!!)
-    GE_from_EPG = np.mean( [len(vol.cn_tables['EPG-5La']['GE-r1'])/vol.connectionDistribution['input']['GE-r1']['tot'],\
-                            len(vol.cn_tables['EPG-5Lb']['GE-r1'])/vol.connectionDistribution['input']['GE-r1']['tot'],\
-                            len(vol.cn_tables['EPG-5Lc']['GE-r1'])/vol.connectionDistribution['input']['GE-r1']['tot']] )
-        
-    EPG_to_GE = np.mean( [len(vol.cn_tables['EPG-5La']['GE-r1'])/vol.connectionDistribution['output']['EPG-5La']['tot'],\
-                          len(vol.cn_tables['EPG-5Lb']['GE-r1'])/vol.connectionDistribution['output']['EPG-5Lb']['tot'],\
-                          len(vol.cn_tables['EPG-5Lc']['GE-r1'])/vol.connectionDistribution['output']['EPG-5Lc']['tot']] )
-    
-    avgCon['GE']['input']['EPG'] = GE_from_EPG * GE_input
-    avgCon['EPG_D']['output']['GE'] = EPG_to_GE * EPG_D_output
-    avgCon['EPG_V']['output']['GE'] = EPG_to_GE * EPG_V_output
-    
-    
-    #Consider dorsal connections to/from PEG    
-    GE_from_PEG = 4 / vol.connectionDistribution['input']['GE-r1']['tot'] #hardcode counts (4/2)
-        
-    GE_to_PEG = 2 / vol.connectionDistribution['output']['GE-r1']['tot']
-        
-    PEG_from_GE = 2 / vol.connectionDistribution['input']['PEG-5L']['tot']
-        
-    PEG_to_GE = 4 / vol.connectionDistribution['output']['PEG-5L']['tot']
-    
-    avgCon['GE']['input']['PEG'] = 4
-    avgCon['GE']['output']['PEG'] = 2
-    avgCon['PEG_D']['input']['GE'] = PEG_from_GE * PEG_D_input
-    avgCon['PEG_D']['output']['GE'] = PEG_to_GE * PEG_D_output
-    avgCon['PEG_V']['input']['GE'] = PEG_from_GE * PEG_V_input
-    avgCon['PEG_V']['output']['GE'] = PEG_to_GE * PEG_V_output
-    
-    #NLG is throughout the GAll, don't distinguish between dorsal and ventral
-    NLG_from_EPG = np.mean( [len(vol.cn_tables['EPG-5Ra']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'],\
-                               len(vol.cn_tables['EPG-5Rb']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'],\
-                               len(vol.cn_tables['EPG-5Rc']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'],\
-                               len(vol.cn_tables['EPG-6Ra']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'],\
-                               len(vol.cn_tables['EPG-6Rb']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'] ] )
-    
-    EPG_to_NLG = np.mean( [len(vol.cn_tables['EPG-5Ra']['NO-LAL-G'])/vol.connectionDistribution['output']['EPG-5Ra']['tot'],\
-                           len(vol.cn_tables['EPG-5Rb']['NO-LAL-G'])/vol.connectionDistribution['output']['EPG-5Rb']['tot'],\
-                           len(vol.cn_tables['EPG-5Rc']['NO-LAL-G'])/vol.connectionDistribution['output']['EPG-5Rc']['tot'],\
-                           len(vol.cn_tables['EPG-6Ra']['NO-LAL-G'])/vol.connectionDistribution['output']['EPG-6Ra']['tot'],\
-                           len(vol.cn_tables['EPG-6Rb']['NO-LAL-G'])/vol.connectionDistribution['output']['EPG-6Rb']['tot'] ] )
-    
-    avgCon['NO-LAL-G']['input']['EPG'] = NLG_from_EPG * NLG_input
-    avgCon['EPG_D']['output']['NO-LAL-G'] = EPG_to_NLG * EPG_D_output #assume both dorsal and ventral EPG have same connectivity to NLG
-    avgCon['EPG_V']['output']['NO-LAL-G'] = EPG_to_NLG * EPG_V_output
-    
-    NLG_from_PEG = np.mean( [len(vol.cn_tables['PEG-5R']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'],\
-                               len(vol.cn_tables['PEG-6R']['NO-LAL-G'])/vol.connectionDistribution['input']['NO-LAL-G']['tot'] ] )
-    
-    PEG_to_NLG = np.mean( [len(vol.cn_tables['PEG-5R']['NO-LAL-G'])/vol.connectionDistribution['output']['PEG-5R']['tot'],\
-                               len(vol.cn_tables['PEG-6R']['NO-LAL-G'])/vol.connectionDistribution['output']['PEG-6R']['tot'] ] )
-    
-    avgCon['NO-LAL-G']['input']['PEG'] = NLG_from_PEG * NLG_input
-    avgCon['PEG_D']['output']['NO-LAL-G'] = PEG_to_NLG * PEG_D_output
-    avgCon['PEG_V']['output']['NO-LAL-G'] = PEG_to_NLG * PEG_V_output
-    
-    #assume only dorsal = dorsal and ventral = ventral connections for PEG and EPG, and consider these individually    
-    EPG_from_PEG_D = np.mean( [len(vol.cn_tables['PEG-5L']['EPG-5La'])/vol.connectionDistribution['input']['EPG-5La']['tot'],\
-                               len(vol.cn_tables['PEG-5L']['EPG-5Lb'])/vol.connectionDistribution['input']['EPG-5Lb']['tot'],\
-                               len(vol.cn_tables['PEG-5L']['EPG-5Lc'])/vol.connectionDistribution['input']['EPG-5Lc']['tot'],\
-                               len(vol.cn_tables['PEG-5R']['EPG-5Ra'])/vol.connectionDistribution['input']['EPG-5Ra']['tot'],\
-                               len(vol.cn_tables['PEG-5R']['EPG-5Rb'])/vol.connectionDistribution['input']['EPG-5Rb']['tot'],\
-                               len(vol.cn_tables['PEG-5R']['EPG-5Rc'])/vol.connectionDistribution['input']['EPG-5Rc']['tot'] ] )
-    avgCon['EPG_D']['input']['PEG_D'] = EPG_from_PEG_D * EPG_D_input
-    
-    EPG_from_PEG_V = np.mean( [len(vol.cn_tables['PEG-6L']['EPG-6La'])/vol.connectionDistribution['input']['EPG-6La']['tot'],\
-                               len(vol.cn_tables['PEG-6L']['EPG-6Lb'])/vol.connectionDistribution['input']['EPG-6Lb']['tot'],\
-                               len(vol.cn_tables['PEG-6R']['EPG-6Ra'])/vol.connectionDistribution['input']['EPG-6Ra']['tot'],\
-                               len(vol.cn_tables['PEG-6R']['EPG-6Rb'])/vol.connectionDistribution['input']['EPG-6Rb']['tot']] )
-    avgCon['EPG_V']['input']['PEG_V'] = EPG_from_PEG_V * EPG_V_input
-    print('res2', vol.connectionDistribution['output']['PEG-5R'])
-    EPG_to_PEG_D = np.mean( [len(vol.cn_tables['EPG-5La']['PEG-5L'])/vol.connectionDistribution['output']['EPG-5La']['tot'],\
-                               len(vol.cn_tables['EPG-5Lb']['PEG-5L'])/vol.connectionDistribution['output']['EPG-5Lb']['tot'],\
-                               len(vol.cn_tables['EPG-5Lc']['PEG-5L'])/vol.connectionDistribution['output']['EPG-5Lc']['tot'],\
-                               len(vol.cn_tables['EPG-5Ra']['PEG-5R'])/vol.connectionDistribution['output']['EPG-5Ra']['tot'],\
-                               len(vol.cn_tables['EPG-5Rb']['PEG-5R'])/vol.connectionDistribution['output']['EPG-5Rb']['tot'],\
-                               len(vol.cn_tables['EPG-5Rc']['PEG-5R'])/vol.connectionDistribution['output']['EPG-5Rc']['tot'] ] )
-    avgCon['EPG_D']['output']['PEG_D'] = EPG_to_PEG_D * EPG_D_output
-    
-    EPG_to_PEG_V = np.mean( [len(vol.cn_tables['EPG-6La']['PEG-6L'])/vol.connectionDistribution['output']['EPG-6La']['tot'],\
-                               len(vol.cn_tables['EPG-6Lb']['PEG-6L'])/vol.connectionDistribution['output']['EPG-6Lb']['tot'],\
-                               len(vol.cn_tables['EPG-6Ra']['PEG-6R'])/vol.connectionDistribution['output']['EPG-6Ra']['tot'],\
-                               len(vol.cn_tables['EPG-6Rb']['PEG-6R'])/vol.connectionDistribution['output']['EPG-6Rb']['tot']] )
-    avgCon['EPG_V']['output']['PEG_V'] = EPG_to_PEG_V * EPG_V_output
-        
-    PEG_from_EPG_D = np.mean( [len(vol.cn_tables['EPG-5La']['PEG-5L'])/vol.connectionDistribution['input']['PEG-5L']['tot'],\
-                               len(vol.cn_tables['EPG-5Lb']['PEG-5L'])/vol.connectionDistribution['input']['PEG-5L']['tot'],\
-                               len(vol.cn_tables['EPG-5Lc']['PEG-5L'])/vol.connectionDistribution['input']['PEG-5L']['tot'],\
-                               len(vol.cn_tables['EPG-5Ra']['PEG-5R'])/vol.connectionDistribution['input']['PEG-5R']['tot'],\
-                               len(vol.cn_tables['EPG-5Rb']['PEG-5R'])/vol.connectionDistribution['input']['PEG-5R']['tot'],\
-                               len(vol.cn_tables['EPG-5Rc']['PEG-5R'])/vol.connectionDistribution['input']['PEG-5R']['tot'] ] )
-    avgCon['PEG_D']['input']['EPG_D'] = PEG_from_EPG_D * PEG_D_input
-    
-    PEG_from_EPG_V = np.mean( [len(vol.cn_tables['EPG-6La']['PEG-6L'])/vol.connectionDistribution['input']['PEG-6L']['tot'],\
-                               len(vol.cn_tables['EPG-6Lb']['PEG-6L'])/vol.connectionDistribution['input']['PEG-6L']['tot'],\
-                               len(vol.cn_tables['EPG-6Ra']['PEG-6R'])/vol.connectionDistribution['input']['PEG-6R']['tot'],\
-                               len(vol.cn_tables['EPG-6Rb']['PEG-6R'])/vol.connectionDistribution['input']['PEG-6R']['tot']] )
-    avgCon['PEG_V']['input']['EPG_V'] = PEG_from_EPG_V * PEG_V_input
-        
-    PEG_to_EPG_D = np.mean( [len(vol.cn_tables['PEG-5L']['EPG-5La'])/vol.connectionDistribution['output']['PEG-5L']['tot'],\
-                             len(vol.cn_tables['PEG-5L']['EPG-5Lb'])/vol.connectionDistribution['output']['PEG-5L']['tot'],\
-                             len(vol.cn_tables['PEG-5L']['EPG-5Lc'])/vol.connectionDistribution['output']['PEG-5L']['tot'],\
-                             len(vol.cn_tables['PEG-5R']['EPG-5Ra'])/vol.connectionDistribution['output']['PEG-5R']['tot'],\
-                             len(vol.cn_tables['PEG-5R']['EPG-5Rb'])/vol.connectionDistribution['output']['PEG-5R']['tot'],\
-                             len(vol.cn_tables['PEG-5R']['EPG-5Rc'])/vol.connectionDistribution['output']['PEG-5R']['tot'] ] )
-    avgCon['PEG_D']['output']['EPG_D'] = PEG_to_EPG_D * PEG_D_output
-    
-    PEG_to_EPG_V = np.mean( [len(vol.cn_tables['PEG-6L']['EPG-6La'])/vol.connectionDistribution['output']['PEG-6L']['tot'],\
-                             len(vol.cn_tables['PEG-6L']['EPG-6Lb'])/vol.connectionDistribution['output']['PEG-6L']['tot'],\
-                             len(vol.cn_tables['PEG-6R']['EPG-6Ra'])/vol.connectionDistribution['output']['PEG-6R']['tot'],\
-                             len(vol.cn_tables['PEG-6R']['EPG-6Rb'])/vol.connectionDistribution['output']['PEG-6R']['tot']] )
-    avgCon['PEG_V']['output']['EPG_V'] = PEG_to_EPG_V * PEG_V_output
-
-    EPG_from_EPG_D = np.mean( [len(vol.cn_tables['EPG-5La']['EPG-5Lb'])/vol.connectionDistribution['input']['EPG-5Lb']['tot'],\
-                               len(vol.cn_tables['EPG-5La']['EPG-5Lc'])/vol.connectionDistribution['input']['EPG-5Lc']['tot'],\
-                               len(vol.cn_tables['EPG-5Lb']['EPG-5La'])/vol.connectionDistribution['input']['EPG-5La']['tot'],\
-                               len(vol.cn_tables['EPG-5Lb']['EPG-5Lc'])/vol.connectionDistribution['input']['EPG-5Lc']['tot'],\
-                               len(vol.cn_tables['EPG-5Lc']['EPG-5La'])/vol.connectionDistribution['input']['EPG-5La']['tot'],\
-                               len(vol.cn_tables['EPG-5Lc']['EPG-5Lb'])/vol.connectionDistribution['input']['EPG-5Lb']['tot'],\
-                               len(vol.cn_tables['EPG-5Ra']['EPG-5Rb'])/vol.connectionDistribution['input']['EPG-5Rb']['tot'],\
-                               len(vol.cn_tables['EPG-5Ra']['EPG-5Rc'])/vol.connectionDistribution['input']['EPG-5Rc']['tot'],\
-                               len(vol.cn_tables['EPG-5Rb']['EPG-5Ra'])/vol.connectionDistribution['input']['EPG-5Ra']['tot'],\
-                               len(vol.cn_tables['EPG-5Rb']['EPG-5Rc'])/vol.connectionDistribution['input']['EPG-5Rc']['tot'],\
-                               len(vol.cn_tables['EPG-5Rc']['EPG-5Ra'])/vol.connectionDistribution['input']['EPG-5Ra']['tot'],\
-                               len(vol.cn_tables['EPG-5Rc']['EPG-5Rb'])/vol.connectionDistribution['input']['EPG-5Rb']['tot'] ] )
-    avgCon['EPG_D']['input']['EPG_D'] = EPG_from_EPG_D * EPG_D_input
-    
-    EPG_from_EPG_V = np.mean( [len(vol.cn_tables['EPG-6La']['EPG-6Lb'])/vol.connectionDistribution['input']['EPG-6Lb']['tot'],\
-                               len(vol.cn_tables['EPG-6Lb']['EPG-6La'])/vol.connectionDistribution['input']['EPG-6La']['tot'],\
-                               len(vol.cn_tables['EPG-6Ra']['EPG-6Rb'])/vol.connectionDistribution['input']['EPG-6Rb']['tot'],\
-                               len(vol.cn_tables['EPG-6Rb']['EPG-6Ra'])/vol.connectionDistribution['input']['EPG-6Ra']['tot'] ] )
-    avgCon['EPG_V']['input']['EPG_V'] = EPG_from_EPG_V * EPG_V_input
-
-    EPG_to_EPG_D = np.mean( [len(vol.cn_tables['EPG-5La']['EPG-5Lb'])/vol.connectionDistribution['output']['EPG-5La']['tot'],\
-                             len(vol.cn_tables['EPG-5La']['EPG-5Lc'])/vol.connectionDistribution['output']['EPG-5La']['tot'],\
-                             len(vol.cn_tables['EPG-5Lb']['EPG-5La'])/vol.connectionDistribution['output']['EPG-5Lb']['tot'],\
-                             len(vol.cn_tables['EPG-5Lb']['EPG-5Lc'])/vol.connectionDistribution['output']['EPG-5Lb']['tot'],\
-                             len(vol.cn_tables['EPG-5Lc']['EPG-5La'])/vol.connectionDistribution['output']['EPG-5Lc']['tot'],\
-                             len(vol.cn_tables['EPG-5Lc']['EPG-5Lb'])/vol.connectionDistribution['output']['EPG-5Lc']['tot'],\
-                             len(vol.cn_tables['EPG-5Ra']['EPG-5Rb'])/vol.connectionDistribution['output']['EPG-5Ra']['tot'],\
-                             len(vol.cn_tables['EPG-5Ra']['EPG-5Rc'])/vol.connectionDistribution['output']['EPG-5Ra']['tot'],\
-                             len(vol.cn_tables['EPG-5Rb']['EPG-5Ra'])/vol.connectionDistribution['output']['EPG-5Rb']['tot'],\
-                             len(vol.cn_tables['EPG-5Rb']['EPG-5Rc'])/vol.connectionDistribution['output']['EPG-5Rb']['tot'],\
-                             len(vol.cn_tables['EPG-5Rc']['EPG-5Ra'])/vol.connectionDistribution['output']['EPG-5Rc']['tot'],\
-                             len(vol.cn_tables['EPG-5Rc']['EPG-5Rb'])/vol.connectionDistribution['output']['EPG-5Rc']['tot']] )
-    avgCon['EPG_D']['output']['EPG_D'] = EPG_to_EPG_D * EPG_D_output
-    
-    EPG_to_EPG_V = np.mean( [len(vol.cn_tables['EPG-6La']['EPG-6Lb'])/vol.connectionDistribution['output']['EPG-6La']['tot'],\
-                             len(vol.cn_tables['EPG-6Lb']['EPG-6La'])/vol.connectionDistribution['output']['EPG-6Lb']['tot'],\
-                             len(vol.cn_tables['EPG-6Ra']['EPG-6Rb'])/vol.connectionDistribution['output']['EPG-6Ra']['tot'],\
-                             len(vol.cn_tables['EPG-6Rb']['EPG-6Ra'])/vol.connectionDistribution['output']['EPG-6Rb']['tot'] ] )
-    avgCon['EPG_V']['output']['EPG_V'] = EPG_to_EPG_V * EPG_V_output
-    
-    print('res3', vol.connectionDistribution['output']['PEG-5R'])
-    
-    connections_in['GE-r1']['EPG'] = 13.5 * GE_from_EPG * vol.connectionDistribution['input']['GE-r1']['tot'] #54 EPG, 27 R/L 13.5 D/V
-    #connections_out['GE-r1']['EPG'] = 13.5 * GE_to_EPG * vol.connectionDistribution['output']['GE-r1']['tot'] GE does not output to EPG
-    connections_in['GE-r1']['PEG'] = 4 * GE_from_PEG * vol.connectionDistribution['input']['GE-r1']['tot'] #16 PEG, 8 R/L 4 D/V
-    connections_out['GE-r1']['PEG'] = 4 * GE_to_PEG * vol.connectionDistribution['output']['GE-r1']['tot'] 
-    
-    connections_in['NO-LAL-G']['EPG'] = 27 * NLG_from_EPG * vol.connectionDistribution['input']['NO-LAL-G']['tot'] #54 EPG, 27 R/L
-    connections_in['NO-LAL-G']['PEG'] = 8 * NLG_from_PEG * vol.connectionDistribution['input']['NO-LAL-G']['tot'] #16 EPG, 8 R/L
-    
-    for PEG in ['PEG-5R', 'PEG-5L']:
-        connections_in[PEG]['EPG'] = 13.5 * PEG_from_EPG_D * vol.connectionDistribution['input'][PEG]['tot'] #54 EPG, 27 R/L 13.5 D/V
-        connections_out[PEG]['EPG'] = 13.5 * PEG_to_EPG_D * vol.connectionDistribution['output'][PEG]['tot']
-        connections_in[PEG]['GE'] = 4 * PEG_from_GE * vol.connectionDistribution['input'][PEG]['tot'] #16 GE, 8 R/L 4 D/V
-        connections_out[PEG]['GE'] = 4 * PEG_to_GE * vol.connectionDistribution['output'][PEG]['tot']
-        connections_out[PEG]['NO-LAL-G'] = 2 * PEG_to_NLG * vol.connectionDistribution['output'][PEG]['tot'] #2 NO-LAL-Gall per side
-        
-    for PEG in ['PEG-6R', 'PEG-6L']:
-        connections_in[PEG]['EPG'] = 13.5 * PEG_from_EPG_V * vol.connectionDistribution['input'][PEG]['tot'] #54 EPG, 27 R/L 13.5 D/V
-        connections_out[PEG]['EPG'] = 13.5 * PEG_to_EPG_V * vol.connectionDistribution['output'][PEG]['tot']
-        connections_in[PEG]['GE'] = 4 * PEG_from_GE * vol.connectionDistribution['input'][PEG]['tot'] #16 GE, 8 R/L 4 D/V
-        connections_out[PEG]['GE'] = 4 * PEG_to_GE * vol.connectionDistribution['output'][PEG]['tot']
-        connections_out[PEG]['NO-LAL-G'] = 2 * PEG_to_NLG * vol.connectionDistribution['output'][PEG]['tot'] #2 NO-LAL-Gall per side
-        
-    for EPG in ['EPG-5Ra', 'EPG-5Rb', 'EPG-5Rc', 'EPG-5La', 'EPG-5Lb', 'EPG-5Lc']:
-        connections_in[EPG]['EPG'] = 4 * EPG_from_PEG_D * vol.connectionDistribution['input'][EPG]['tot'] #16 PEG, 8 R/L 4 D/V
-        connections_out[EPG]['EPG'] = 4 * EPG_to_PEG_D * vol.connectionDistribution['output'][EPG]['tot']
-        #connections_in[EPG.neuron_name]['GE'] = 4 * EPG_from_GE * vol.connectionDistribution['input'][EPG.neuron_name]['tot'] GE does not output to EPG
-        connections_out[EPG]['GE'] = 4 * EPG_to_GE * vol.connectionDistribution['output'][EPG]['tot'] #16 GE, 8 R/L 4 D/V
-        connections_in[EPG]['EPG'] = 12.5 * EPG_from_EPG_D * vol.connectionDistribution['input'][EPG]['tot'] #54 EPG, 27 R/L 13.5 D/V minus self interaction
-        connections_out[EPG]['EPG'] = 12.5 * EPG_to_EPG_D * vol.connectionDistribution['output'][EPG]['tot']
-        connections_out[EPG]['NO-LAL-G'] = 2 * EPG_to_NLG * vol.connectionDistribution['output'][EPG]['tot'] #2 NO-LAL-Gall per side
-        
-    for EPG in ['EPG-6Ra', 'EPG-6Rb', 'EPG-6La', 'EPG-6Lb']:
-        connections_in[EPG]['EPG'] = 4 * EPG_from_PEG_V * vol.connectionDistribution['input'][EPG]['tot'] #16 PEG, 8 R/L 4 D/V
-        connections_out[EPG]['EPG'] = 4 * EPG_to_PEG_V * vol.connectionDistribution['output'][EPG]['tot']
-        #connections_in[EPG.neuron_name]['GE'] = 4 * EPG_from_GE * vol.connectionDistribution['input'][EPGneuron_name]['tot'] GE does not output to EPG
-        connections_out[EPG]['GE'] = 4 * EPG_to_GE * vol.connectionDistribution['output'][EPG]['tot'] #16 GE, 8 R/L 4 D/V
-        connections_in[EPG]['EPG'] = 12.5 * EPG_from_EPG_V * vol.connectionDistribution['input'][EPG]['tot'] #54 EPG, 27 R/L 13.5 D/V minus self interaction
-        connections_out[EPG]['EPG'] = 12.5 * EPG_to_EPG_V * vol.connectionDistribution['output'][EPG]['tot']
-        connections_out[EPG]['NO-LAL-G'] = 2 * EPG_to_NLG * vol.connectionDistribution['output'][EPG]['tot'] #2 NO-LAL-Gall per side
-    print('res4', vol.connectionDistribution['output']['PEG-5R'])
     connectionEstimate['input'] = connections_in
     connectionEstimate['output'] = connections_out
     
@@ -911,7 +586,7 @@ def get_connection_estimate_EB_wedge(vol):
     
     '''
     
-    avgCon = {'GE':{}, 'EPG':{}, 'PEG':{}, 'PEN1':{}, 'PEN2':{}}#, 'R':{}}
+    avgCon = {'EPG':{}, 'PEG':{}, 'PEN1':{}, 'PEN2':{}}#, 'R':{}}
     for k1, g1 in avgCon.items():
         g1['input'] = {}
         g1['output'] = {}
@@ -941,13 +616,10 @@ def get_connection_estimate_EB_wedge(vol):
     
     PEGa, PEGb, PEGc = ['PEG-6L'], ['PEG-5R', 'PEG-5L'], ['PEG-6R']
     PEGs = [PEGa, PEGb, PEGc] #tiles
-    
-    GEa, GEb, GEc = [], [], ['GE-r1']
-    GEs = [GEa, GEb, GEc]
-    
+
     Rs = ['Ra', 'Rb', 'Rc', 'Rd', 'Re', 'Rf', 'Rg']
     
-    groups = {'EPG': EPGws, 'PEN1': PEN1s, 'PEN2': PEN2s, 'PEG': PEGs, 'GE': GEs}
+    groups = {'EPG': EPGws, 'PEN1': PEN1s, 'PEN2': PEN2s, 'PEG': PEGs}
     
     #first get EPG self interactions in wedge
     
@@ -1119,86 +791,9 @@ def get_connection_estimate_EB_wedge(vol):
                 connections_out[N]['R'] = 100 * condict['to']['s']['R'] * vol.connectionDistribution['output'][N]['tot']
                 
         print(connections_in[N]['R'])
-        
-    connections_in['GE-r1']['GE']=5 #add this manually since it's the only self-interaction. 5 self-interactions
-    connections_out['GE-r1']['GE']=5
-    avgCon['GE']['output']['GE_s'] = 5
-    avgCon['GE']['input']['GE_s'] = 5
-    avgCon['GE']['output']['GE_n'] = 0
-    avgCon['GE']['input']['GE_n'] = 0
+
     
     #avg output to neighboring EPGs is 24.8, input 54.2. average same/neighboring ratio for PEN1, PEN2 is 2.69
-    
-    
-    EPGout, EPGin, GEout, GEin = [0.0 for i in range(4)]
-    L = len(EPGb2)
-
-    for EPG in EPGb2:
-        EPGout += len( vol.cn_tables[EPG]['GE-r1'] )/vol.connectionDistribution['output'][EPG]['tot']
-        EPGin += len( vol.cn_tables['GE-r1'][EPG] )/vol.connectionDistribution['input'][EPG]['tot']
-        GEin += len( vol.cn_tables[EPG]['GE-r1'] )/vol.connectionDistribution['input']['GE-r1']['tot']
-        GEout += len( vol.cn_tables['GE-r1'][EPG] )/vol.connectionDistribution['output']['GE-r1']['tot']
-    
-    EPGout, EPGin, GEout, GEin = EPGout/L, EPGin/L, GEout/L, GEin/L
-    
-    print('epgout', EPGout*vol.connectionDistribution['output']['EPG-5Ra']['tot'])
-    print('gein', GEin*vol.connectionDistribution['input']['GE-r1']['tot'])
-    
-    print('epgin', EPGin*vol.connectionDistribution['input']['EPG-5Ra']['tot'])
-    print('geout', GEout*vol.connectionDistribution['output']['GE-r1']['tot'])
-    
-    fracs = []
-    
-    for PENs in [ [PEN1b, PEN1c], [PEN2b, PEN2c] ]: #first is same tile, second is adjacent tile
-        pout_n, gin_n, pout_s, gin_s = [0.0 for i in range(4)]
-        for PEN in PENs[0]:
-            pout_n += len( vol.cn_tables[PEN]['GE-r1'] )/vol.connectionDistribution['output'][PEN]['tot']
-            gin_n += len( vol.cn_tables[PEN]['GE-r1'] )/vol.connectionDistribution['input']['GE-r1']['tot']
-        for PEN in PENs[1]:
-            pout_s += len( vol.cn_tables[PEN]['GE-r1'] )/vol.connectionDistribution['output'][PEN]['tot']
-            gin_s += len( vol.cn_tables[PEN]['GE-r1'] )/vol.connectionDistribution['input']['GE-r1']['tot']
-    
-        pout_n /= len(PENs[0])
-        gin_n /= len(PENs[0])
-        pout_s /= len(PENs[1])
-        gin_s /= len(PENs[1])
-        
-        for frac in [ [pout_n, pout_s], [gin_n, gin_s]  ]: fracs.append( frac[1]/frac[0] )
-        
-    ratio = np.mean( np.array(fracs) ) #the ratio of same wedge to neighboring wedge connections
-    
-    print('fracs', fracs)
-    print('ratio', ratio)
-    
-    
-    EPGtoGE_s = 54.2*2.69
-    EPGfromGE_s = 24.8*2.69
-    EPGtoGE_n = 54.2
-    EPGfromGE_n = 24.8
-    
-    GEfromEPG = 2*54/16*EPGtoGE_n+54/16*EPGtoGE_s
-    GEtoEPG = 2*54/16*EPGfromGE_n+54/16*EPGfromGE_s
-    
-    EPGtoGE = 2*EPGtoGE_n+EPGtoGE_s #one same wedge and two neighboring GEs
-    EPGfromGE = 2*EPGfromGE_n+EPGfromGE_s
-    
-    
-    connections_in['GE-r1']['EPG'] = (ratio*GEin*54/16+2*54/16*GEin)*vol.connectionDistribution['input']['GE-r1']['tot']
-    connections_out['GE-r1']['EPG'] = (ratio*GEout*54/16+2*54/16*GEout)*vol.connectionDistribution['output']['GE-r1']['tot']
-    
-    for wedge in EPGws:
-        for EPG in wedge:
-            connections_in[EPG]['GE'] = (ratio*EPGin+2*EPGin)*vol.connectionDistribution['input'][EPG]['tot']
-            connections_out[EPG]['GE'] = (ratio*EPGout+2*EPGout)*vol.connectionDistribution['output'][EPG]['tot']
-            
-    avgCon['GE']['input']['EPG_s'] = ratio*GEin*np.mean(totins['GE'])
-    avgCon['GE']['output']['EPG_s'] = ratio*GEout*np.mean(totouts['GE'])
-    avgCon['EPG']['input']['GE_s'] = ratio*EPGin*np.mean(totins['EPG'])
-    avgCon['EPG']['output']['GE_s'] = ratio*EPGout*np.mean(totouts['EPG'])
-    avgCon['GE']['input']['EPG_n'] = GEin*np.mean(totins['GE'])
-    avgCon['GE']['output']['EPG_n'] = GEout*np.mean(totouts['GE'])
-    avgCon['EPG']['input']['GE_n'] = EPGin*np.mean(totins['EPG'])
-    avgCon['EPG']['output']['GE_n'] = EPGout*np.mean(totouts['EPG'])
             
 
     connectionEstimate['input'] = connections_in
@@ -1214,11 +809,11 @@ if __name__ == '__main__':
     
     from buildCX import buildCX, get_connection_distributions
     
-    Norm = False #determines whether or not to normalize the synapse count
-    include_unknown = True #determines whether or not to include an explicit 'unknown' category
+    Norm = True #determines whether or not to normalize the synapse count
+    include_unknown = False #determines whether or not to include an explicit 'unknown' category
     
     show = True #show the neurons as we import them
-    vol = buildCX(show=show, from_pickled = True) #construct a 'volume' instance from the neurons
+    vol = buildCX(show=show) #construct a 'volume' instance from the neurons
     
     
     #plot connectivity distribution without extrapolation
@@ -1241,14 +836,6 @@ if __name__ == '__main__':
     vol.subvolumes['NO'].connectionEstimate = est
     vol.subvolumes['NO'].plot_connection_distribution(relation = 'input', title='estimate_NO_input', estimate = True, Norm = Norm, include_unknown = include_unknown)
     vol.subvolumes['NO'].plot_connection_distribution(relation = 'output', title='estimate_NO_output', estimate = True, Norm = Norm, include_unknown = include_unknown)
-    
-    #Gall
-    vol.subvolumes['G'].get_connection_distribution(relation = 'input')  
-    vol.subvolumes['G'].get_connection_distribution(relation = 'output')
-    est, avgCon = get_connection_estimate_G(vol.subvolumes['G'])
-    vol.subvolumes['G'].connectionEstimate = est
-    vol.subvolumes['G'].plot_connection_distribution(relation = 'input', title='estimate_G_input', estimate = True, Norm = Norm, include_unknown = include_unknown)
-    vol.subvolumes['G'].plot_connection_distribution(relation = 'output', title='estimate_G_output', estimate = True, Norm = Norm, include_unknown = include_unknown)
     
     #Ellipsoid body
     vol.subvolumes['EB'].get_connection_distribution(relation = 'input')

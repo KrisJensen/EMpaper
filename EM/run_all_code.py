@@ -9,22 +9,21 @@ Created on Sat Jun  6 15:10:24 2020
 import pickle
 import copy
 from buildCX import buildCX, connectivity, get_connection_distributions
-from estimate_synapses_distribution import get_connection_estimate_PB, get_connection_estimate_NO, get_connection_estimate_G, get_connection_estimate_EB_wedge
-from make_PB_EB_extrapolated_matrices import write_combined_cons
+from estimate_synapses_distribution import get_connection_estimate_PB, get_connection_estimate_NO, get_connection_estimate_EB_wedge
+from make_PB_EB_extrapolated_matrix import write_combined_cons
 from treeNeuron import treeNeuron
 
 show = True #show the neurons as we import them
-vol = buildCX(show=show, from_pickled = True) #construct a 'volume' instance from the neurons
+vol = buildCX(show=show) #construct a 'volume' instance from the neurons
 
 
 #%% get connectivity matrices
 connectivity(vol, show)
 
 
-
 #%% get connectivity distributions
-Norm = False #determines whether or not to normalize the synapse count
-include_unknown = True #determines whether or not to include an explicit 'unknown' category
+Norm = True #determines whether or not to normalize the synapse count
+include_unknown = False #determines whether or not to include an explicit 'unknown' category
 
 get_connection_distributions(vol, Norm = Norm, include_unknown = include_unknown)
 
@@ -41,18 +40,10 @@ vol.subvolumes['PB'].plot_connection_distribution(relation = 'output', title='es
 #Noduli
 vol.subvolumes['NO'].get_connection_distribution(relation = 'input')
 vol.subvolumes['NO'].get_connection_distribution(relation = 'output')
-est, avgCon = get_connection_estimate_NO(vol.subvolumes['NO'])
+est, avgConNO = get_connection_estimate_NO(vol.subvolumes['NO'])
 vol.subvolumes['NO'].connectionEstimate = est
 vol.subvolumes['NO'].plot_connection_distribution(relation = 'input', title='estimate_NO_input', estimate = True, Norm = Norm, include_unknown = include_unknown)
 vol.subvolumes['NO'].plot_connection_distribution(relation = 'output', title='estimate_NO_output', estimate = True, Norm = Norm, include_unknown = include_unknown)
-
-#Gall
-vol.subvolumes['G'].get_connection_distribution(relation = 'input')  
-vol.subvolumes['G'].get_connection_distribution(relation = 'output')
-est, avgCon = get_connection_estimate_G(vol.subvolumes['G'])
-vol.subvolumes['G'].connectionEstimate = est
-vol.subvolumes['G'].plot_connection_distribution(relation = 'input', title='estimate_G_input', estimate = True, Norm = Norm, include_unknown = include_unknown)
-vol.subvolumes['G'].plot_connection_distribution(relation = 'output', title='estimate_G_output', estimate = True, Norm = Norm, include_unknown = include_unknown)
 
 #Ellipsoid body
 vol.subvolumes['EB'].get_connection_distribution(relation = 'input')

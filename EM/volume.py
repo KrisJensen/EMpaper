@@ -12,22 +12,22 @@ import matplotlib.pyplot as plt
 import requests
 from requests.auth import HTTPBasicAuth
 import pickle
-import despike
 plt.rcParams['pdf.fonttype'] = 42
 
-rm = CatmaidInstance('https://neuropil.janelia.org/tracing/fafb/v14',\
-                             'fly',\
-                             'superfly',\
-                             'ed74a1d9fe352b5022e048de2fdae0fbe23d67b4')
+
+rm = CatmaidInstance('',\
+                     '',\
+                     '',\
+                     '')
 
 class volume():
     '''class for analyzing neurons in the central complex.
     CAn group neurons according to type and split according to neuropil.
     Contains methods for analyzing connectivity'''
     
-    def __init__(self, url='https://neuropil.janelia.org/tracing/fafb/v14', arg1='fly',\
-                 arg2='superfly', token='ed74a1d9fe352b5022e048de2fdae0fbe23d67b4',\
-                 neurons=[]):
+    def __init__(self, url='', arg1='',\
+                 arg2='', token='',\
+                 neurons=[], name = 'all'):
         '''initialize by connection to catmaid and setting up data structures.
         Neurons is a list of either skids or names as exact matching strings'''
         
@@ -42,22 +42,20 @@ class volume():
         self.all_names = dict() #pairs a name with a neuron
         self.all_skids = dict() #pairs a skid with a neuron
         self.neuron_count = 0 #this is also just length of all
-        self.cn_tables = {}
-        self.full_cn_tables_input={}
-        self.full_cn_tables_output={}
-        self.connectionDistribution = {}
-        self.connectionEstimate = {}
-        self.root_dists={}
+        self.cn_tables = {} #connection tables
+        self.full_cn_tables_input={} #input tables
+        self.full_cn_tables_output={} #output tables
+        self.connectionDistribution = {} #distributions
+        self.connectionEstimate = {} #extrapolated distributions
         self.neuron_input = {}
         self.neuron_output = {}
         self.all_cons = []
+        self.name = name #neuropil name
         
-        
-        
-        for neuron in neurons: #initialize with neurons is given
+        for neuron in neurons: #initialize with neurons given
             self.add_neuron
         
-    def add_neuron(self, neuron, name='default', subgroup = [], despike='None', rootnode = 'None', roottype = 'None',\
+    def add_neuron(self, neuron, name='default', subgroup = [], to_despike='None', rootnode = 'None', roottype = 'None',\
                    threshold = 'None', show = True):
         '''can take either skid or exact catmaid name as strings, or neuron class isntance.
         Returns neuron. name is the name used for the neuron (string), subgroup is a list of
@@ -73,25 +71,16 @@ class volume():
         print('adding neuron', neuron.neuron_name)
             
         if not threshold == 'None':
-            
-            investigate_despike.despike(neuron, despike, 8000, show = show)
-            
-            
-        elif not despike == 'None':
-            despike_neuron(neuron, inplace=True, sigma=despike)
+            despike.despike(neuron, despike, 8000, show = show) # we 'despike' the misaligned nodes for plotting
+        elif not to_despike == 'None':
+            despike_neuron(neuron, inplace=True, sigma=despike) # this is pymaid's function
             
         self.neuron_count += 1
-        
-        
         self.groups['all'].append(neuron)
-        
-        if 'R' in subgroup: print(rootnode)
         
         neuron.rootnode = rootnode #tid of rootnode for calculating distances
         neuron.roottype = roottype #type of rootnote: 'in' or 'out'
-        
-        if 'R' in subgroup: print(neuron.rootnode)
-        
+
         #maintain dicts of neuron name and skid
         self.all_names[neuron.neuron_name] = neuron #might want to do something if name already exists
         self.all_skids[neuron.skeleton_id] = neuron
@@ -112,60 +101,36 @@ class volume():
         
     def init_subgroup(self, subgroup, neurons = [ ]):
         '''initiate subgroup of neurons, e.g. corresponding to particular celltype'''
-        
         self.groups[subgroup] = [ ] #add subgroup to dict of subgroups
-        
         for neuron in neurons:
             self.add_to_subgroup(neuron) #add neurons to subgroup
-        
         return self.groups[subgroup]
         
     def add_to_subgroup(self, neuron, subgroup):
         '''add neuron to subgroup'''
-        
         if not subgroup in self.groups:
             self.init_subgroup[subgroup] #initialize if subgroup does not exist
-            
         self.groups[subgroup].append(neuron) #add neurons to subgroup
         
     def subvolume(self, name, neurons=[]):
-        '''initiate a new subvolume corresponding to particular part of the brain'''
-        
+        '''initiate a new subvolume corresponding to particular neuropil (PB, EB, NO)'''
         skids = [n.skeleton_id for n in neurons] #list of skids to add to subvolume
-        
         #construct new instance of the volume class and add to subvolumes. Add neurons.
-        self.subvolumes[name] = volume(self.url, self.arg1, self.arg2, self.token, skids)
+        self.subvolumes[name] = volume(self.url, self.arg1, self.arg2, self.token, skids, name = name)
 
         
     def add_to_subvolume(self, neuron, subvolume, name='default', subgroup=[], rootnode = 'None', roottype = 'None',):
         'add neuron, can be either skid or instance of neuron class'''
-        
         if type(neuron) == str or type(neuron) == int:
-        
             neuron = copy.copy(self.get_neuron(neuron))
-        
         self.subvolumes[subvolume].add_neuron(neuron, name, subgroup, rootnode = rootnode, roottype = roottype)
-         
-        
-    def splitGE(self, neuron, cut=23774728, show=True):
-        '''splits the GE neuron into an E segment and a G segment'''
-        
-        print('\ncutting GE')
-        GE = self.get_neuron(neuron)
-        GE_EB = cut_neuron(GE, cut_node=cut)[0]
-        GE_G = cut_neuron(GE, cut_node=cut)[1]
-
-        if show: #plot the neuron as cutted
-            fig, ax = GE_EB.plot2d(color='red', method='2d', connectors=False)
-            fig, ax = GE_G.plot2d(color='blue', method='2d', connectors=False, ax=ax)
-            plt.show()
-        
-        return GE_EB, GE_G
- 
     
-    def split(self, neuron, cut1, cut2, rev=False, randomParameter=False, show=True, Type ='None'):
+    def split(self, neuron, cut1, cut2, rev=False, reverse=False, show=True, Type ='None'):
         '''split a PEN/EPG neuron into PB, EB and G/NO segments given treenode ids to cut
-        cut1 is for PB (proximal) cut2 for G/NO (distal)'''
+        cut1 is for PB (proximal) cut2 for G/NO (distal)
+        'Type' is an ad-hoc parameter that tells us which part of the split corresponds to which neuropil
+        this is necessary because we use pymaids cut_neuron function which does not take neuropil identities
+        into account'''
         
         neuron = self.get_neuron(neuron)
         print('\ncutting '+neuron.neuron_name)
@@ -200,8 +165,7 @@ class volume():
             N_EB = cut_neuron(cut_neuron(neuron, cut_node=cut1 )[0], cut_node=cut2 )[1]
             N_G = cut_neuron(neuron, cut_node=cut2 )[0]
             
-        
-        if randomParameter: #this is just silly
+        if reverse: #need to flip the identity
             temp1 = copy.copy(N_G)
             temp2 = copy.copy(N_PB)      
             N_PB = temp1
@@ -219,7 +183,6 @@ class volume():
         '''given skid, name or neuron class, returns corresponding instance of neuron class
         allows ua to not worry too much about how the neuron is specified if we run this function before
         subsequent manipulations'''
-        
         if type(identifier) == str:
             try:
                 skid = int(identifier)
@@ -228,46 +191,14 @@ class volume():
                 neuron = self.all_names[identifier]
         elif type(identifier) == int:
             neuron = self.all_names[ str(identifier) ]
-            
         else:
             try:
                 identifier.neuron_name #will raise exception if not neuron type
                 neuron = identifier
-        
             except:
                 print('identifier not recognized')
                 return
-        
         return neuron
-    
-    def get_json(self, neuron):
-        '''returns the json of the neuron from catmaid, has full connectivity information
-        neuron can be either skid, name or neuron object'''
-        
-        skid = int( self.get_neuron(neuron).skeleton_id ) #get skeleton id
-        
-        neuron = requests.post('https://neuropil.janelia.org/tracing/fafb/v14/1/skeletons/connectivity',\
-                                 data ={'source_skeleton_ids[]':[skid],'boolean_op':'OR', 'with_nodes':'true'},\
-                                 auth = CatmaidApiTokenAuth(self.token))
-        neuron = neuron.json()
-        
-        return neuron
-    
-    def get_connections(self, pre, post):
-        '''returns all of the connections from pre to post as a list of [treenode_pre, treenode_post, skid_pre] elements'''
-        
-        pre_json = self.get_json(pre)
-        #post_json = self.get_json(post)
-        
-        #return connectivity
-        try: return pre_json['outgoing'][ self.get_neuron(post).skeleton_id ]['links']
-        
-        except KeyError: #if there are no connections between pre and post, the json dict is empty and we return an empty list
-            return []
-        
-        except ConnectionError: #if there's something wrong with the connection we note this but don't crash
-            print('No connection, continuing without data')
-            return []
 
     def construct_cn_tables(self, check=False):
         '''constructs dictionary with connections from all neurons in volume to all
@@ -299,15 +230,10 @@ class volume():
                         if cn[0] in pre.nodes.treenode_id.values:
                             print('connection in fragment ', cn[0])
                             newconnections.append(cn) #add to list if in fragment
-                    #print('\npost: ')
-                    #print(newconnections)
                     connections = newconnections
                     print(connections)
                 
                 cn_tables[pre.neuron_name][post.neuron_name]=connections #add to dict
-            #print('\n connections '+pre.neuron_name)
-            #print(cn_tables[pre.neuron_name])
-            #print('\n')
                 
         self.cn_tables = cn_tables
   
@@ -381,7 +307,7 @@ class volume():
                       'PEN1-6Ra', 'PEN1-6Rb', 'PEN1-6La', 'PEN1-6Lb','PEN2-6Ra', 'PEN2-6Rb', 'PEN2-6La', 'PEN2-6Lb',\
                       'EPG-5Ra', 'EPG-5Rb', 'EPG-5Rc', 'EPG-5La', 'EPG-5Lb', 'EPG-5Lc', 'PEG-5R', 'PEG-5L',\
                       'PEN1-7R', 'PEN1-5L', 'PEN2-7R', 'PEN2-5L', 'EPG-6Ra', 'EPG-6Rb', 'PEG-6R',\
-                      'GE-r1', 'Ra','Rb','Rc','Rd','Re','Rf','Rg']
+                      'Ra','Rb','Rc','Rd','Re','Rf','Rg']
             group1 = [self.get_neuron(n) for n in g1]
             group2 = copy.copy(group1)
         
@@ -423,14 +349,18 @@ class volume():
             
         return tot, data
     
-    def get_total_connections(self, neuron, relation):
+    def get_total_connections(self, neuron, relation, Type = 'local'):
         '''return the total number of input connections to this neuron'''
         
         if relation == 'input': relation = 'upstream'
         if relation == 'output': relation = 'downstream'
         
         neuron = self.get_neuron(neuron)
-        cn_table = cn_table_from_connectors(neuron)
+        if Type == 'global':
+            cn_table = cn_table_from_connectors(neuron)
+            pickle.dump(cn_table, open('pickled_neurons/neuron_connections/'+self.name+'_'+relation+'_'+neuron.neuron_name+'_pickled', 'wb'))
+        else:
+            cn_table = pickle.load(open('pickled_neurons/neuron_connections/'+self.name+'_'+relation+'_'+neuron.neuron_name+'_pickled', 'rb'))
         
         connections = cn_table[ cn_table.relation==relation ] #get all INPUTS/OUTPUTS for a neuron
         
@@ -475,7 +405,7 @@ class volume():
         
     
     def plot_connection_distribution(self, relation = 'input', neurons_init='all',\
-                                     title='connection_distribution', show=True, estimate=True, skip_GE_NLG = True,
+                                     title='connection_distribution', show=True, estimate=True,
                                      Norm = True, include_unknown = False):
         
 
@@ -489,26 +419,13 @@ class volume():
         if estimate: connections = copy.deepcopy(self.connectionEstimate[relation])
         else: connections = copy.deepcopy(self.connectionDistribution[relation])
     
-        if skip_GE_NLG:
-            groups = ['PEN1', 'PEN2', 'EPG', 'PEG', 'D7']
-            leg = ['PEN1 (8)', 'PEN2 (8)', 'EPG (10)', 'PEG (4)', 'D7 (7)']
-            if estimate: leg = ['PEN1 (16)', 'PEN2 (16)', 'EPG (54)', 'PEG (16)', 'D7 (40)']
-            colors = [ '#f1c40f', '#cd6155','#27ae60', '#2e86c1', '#c2c2c2']
+        groups = ['PEN1', 'PEN2', 'EPG', 'PEG', 'D7']
+        leg = ['PEN1 (8)', 'PEN2 (8)', 'EPG (10)', 'PEG (4)', 'D7 (7)']
+        if estimate: leg = ['PEN1 (16)', 'PEN2 (16)', 'EPG (54)', 'PEG (16)', 'D7 (40)']
+        colors = [ '#f1c40f', '#cd6155','#27ae60', '#2e86c1', '#c2c2c2']
         
-        else:
-            groups = ['PEN1', 'PEN2', 'EPG', 'PEG', 'D7', 'GE']
-            leg = ['PEN1 (8)', 'PEN2 (8)', 'EPG (10)', 'PEG (4)', 'D7 (7)', 'GE (1)']
-            if estimate: leg = ['PEN1 (16)', 'PEN2 (16)', 'EPG (54)', 'PEG (16)', 'D7 (40)', 'GE (16)']
-        
-            colors = [ '#f1c40f', '#cd6155','#27ae60', '#2e86c1', '#c2c2c2', '#d7bde2']
             
                   
-        if not skip_GE_NLG:
-            if 'NO-LAL-G' in self.groups.keys():
-                groups.append('NO-LAL-G')
-                if estimate: leg.append('NO-LAL-G (4)')
-                else: leg.append('NO-LAL-G (1)')
-                colors.append( '#6cfffb' )
         if 'R' in self.groups.keys():
             groups.append('R')
             if estimate: leg.append('R (100)')
@@ -532,8 +449,7 @@ class volume():
                 print('fewer than 10 connections for '+neuron.neuron_name+', not included in plot')
 
             else:
-                if not ( (neuron.neuron_name in ['Ra','Rb','Rc','Rd','Re','Rf','Rg'])
-                         or (skip_GE_NLG and ('GE' in neuron.neuron_name or 'NO-LAL-G' in neuron.neuron_name)) ):
+                if not (neuron.neuron_name in ['Ra','Rb','Rc','Rd','Re','Rf','Rg']):
                     cum = 0.0
                     for key, number in connections[neuron.neuron_name].items():
                         #print(number, self.connectionDistribution[neuron.neuron_name]['tot'])
@@ -659,12 +575,13 @@ class volume():
         for n1, dic in self.cn_tables.items():
             for n2, cons in dic.items():
                 for con in cons:
-                    out[n1].append( con[0] )
-                    inp[n2].append( con[1] )
-                    
-                    if con[1] == 3785136: print(n1, n2, con)
-                    
-                    tot.append( ( con[0], con[1] ) )
+                    if not ( ('GE' in n1) or ('GE' in n2) or ('LAL' in n1) or ('LAL' in n2) ):
+                        out[n1].append( con[0] )
+                        inp[n2].append( con[1] )
+                        
+                        if con[1] == 3785136: print(n1, n2, con)
+                        
+                        tot.append( ( con[0], con[1] ) )
                 
         self.neuron_inputs = inp
         self.neuron_outputs = out
@@ -680,26 +597,4 @@ class volume():
                     f.write(n1+' '+n2)
                     for con in cons: f.write(' '+str(con[0])+','+str(con[1]))
                     f.write('\n')
-        
-                    
-        
-                
-        
-        
-
-class CatmaidApiTokenAuth(HTTPBasicAuth):
-   """Attaches HTTP X-Authorization Token headers to the given Request.
-   Optionally, Basic HTTP Authentication can be used in parallel.
-   """
-   def __init__(self, token, username=None, password=None):
-       super(CatmaidApiTokenAuth, self).__init__('fly', 'superfly')
-       self.token = token
-       
-   def __call__(self, r):
-       r.headers['X-Authorization'] = 'Token {}'.format(self.token)
-       if self.username and self.password:
-           super(CatmaidApiTokenAuth, self).__call__(r)
-       return r
-        
-
         
