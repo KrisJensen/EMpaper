@@ -581,10 +581,13 @@ class volume():
             out[neuron.neuron_name] = []
         for n1, dic in self.cn_tables.items():
             for n2, cons in dic.items():
-                for con in cons:
-                    out[n1].append(con[0])
-                    inp[n2].append(con[1])
-                    tot.append((con[0], con[1]))
+                try:
+                    for con in cons:
+                        out[n1].append(con[0])
+                        inp[n2].append(con[1])
+                        tot.append((con[0], con[1]))
+                except KeyError:
+                    print('neuron not included')
         self.neuron_inputs = inp
         self.neuron_outputs = out
         self.all_cons = tot
