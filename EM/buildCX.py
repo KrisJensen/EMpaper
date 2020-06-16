@@ -16,9 +16,6 @@ def buildCX(show=True):
     vol = volume()
     groups = ['PEN1', 'PEN2', 'EPG', 'PEG', 'D7', 'R']  #neuron types to consider
 
-    nameAddLAL = '_LAL'
-    nameAddR = '_R'
-
     #rootnodes for the different neurons and neuropils    
     rootnodes_PEN1 = [ [3126471,3593898,2185557,2181724,2210880,2857643,3513461,12603123],\
                       [5837503,5398965,1948755,2181016,(2215133,2215382),2214922,5627995,3501313],\
@@ -130,11 +127,11 @@ def buildCX(show=True):
         vol.add_to_subvolume(R, 'EB', subgroup = 'R')
     
     #load connection tables
-    vol.cn_tables = pickle.load( open('pickled_neurons/all_cn_tables'+nameAddLAL+nameAddR+'_pickled', 'rb' ) ) 
+    vol.cn_tables = pickle.load( open('pickled_neurons/all_cn_tables_LAL_R_pickled', 'rb' ) ) 
     
     #load connection tables for subvolumes (neuropils)
     for key, subvol in vol.subvolumes.items():
-        subvol.cn_tables = pickle.load( open('pickled_neurons/'+key+'_cn_tables'+nameAddLAL+nameAddR+'_pickled', 'rb' )) 
+        subvol.cn_tables = pickle.load( open('pickled_neurons/'+key+'_cn_tables_LAL_R_pickled', 'rb' )) 
                             
     for subvolume in vol.subvolumes:
         for group in groups:

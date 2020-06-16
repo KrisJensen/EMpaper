@@ -43,11 +43,6 @@ class modelCX():
             'EPG-5Ra','EPG-5Rb','EPG-5Rc', 'EPG-4La','EPG-4Lb','EPG-4Lc', 'EPG-6Ra','EPG-6Rb','EPG-6Rc',\
             'EPG-3La','EPG-3Lb','EPG-3Lc', 'EPG-7Ra','EPG-7Rb','EPG-7Rc', 'EPG-2La','EPG-2Lb','EPG-2Lc',\
             'EPG-8Ra','EPG-8Rb','EPG-8Rc']
-        
-        neurons['GE'] = ['GE-r1', 'GE-l1', 'GE-r2', 'GE-l2','GE-r3', 'GE-l3', 'GE-r4', 'GE-l4',\
-           'GE-r5', 'GE-l5', 'GE-r6', 'GE-l6','GE-r7', 'GE-l7', 'GE-r8', 'GE-l8']
-    
-        neurons['NO-LAL-G'] = ['NO-LAL-G-ra', 'NO-LAL-G-rb', 'NO-LAL-G-la', 'NO-LAL-G-lb']
     
         neurons['R'] = ['R']
         
@@ -66,7 +61,7 @@ class modelCX():
         self.groups = {}
         
         if groups == 'all':
-            groups = ['EPG', 'PEG', 'PEN1', 'PEN2', 'NO-LAL-G', 'D7', 'R', 'GE']
+            groups = ['EPG', 'PEG', 'PEN1', 'PEN2', 'D7', 'R']
         
         for g in groups:
             self.groups[g] = neurons[g]
@@ -80,19 +75,16 @@ class modelCX():
             for n in neurons[g]:
                 self.connections[n] = {}
                 for g2 in groups:
-                    #if g2 == 'PEN2': print('adding PEN2')
                     for n2 in neurons[g2]:
 
                         self.connections[n][n2] = 0
-                        
-        #print(self.connections['PEN1-2R'].keys())
+
         
     def add_subvolume(self, name, groups):
         self.subvolumes[name] = modelCX(groups)
         
     def add_connection(self, pre, post, count):
         if str(count) == 'nan': count = 0
-        #if not ('GE' in pre or 'NO' in pre): print('added', pre, post, count)
         self.connections[pre][post] = count
         
     def connectivity(self, groups1='all', groups2='all', file='None',\

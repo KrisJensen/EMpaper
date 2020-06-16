@@ -11,23 +11,12 @@ import numpy as np
 import pickle
 
 def get_connection_estimate_PB(vol):
-    '''go from connection distribution and try to guesstimate what the total number of connections for each is
-    need to specify which region we're in for this to work. Will be quite hardcoded :(
-    
-    PB
+    '''
     Assume we have correct number of PEN1/PEN2
     Assume we have correct number of EPG/PEG in 5/6, transfer the mean of these interactions to 7
     This implies that we have full EPG/PEG connectivity and full EPG to PEN
     Assume we have 40 D7s... Assume each covers 2 glomeruli - this gives 80 sets of output - roughly four
     per glomerulus
-
-    NO
-    Assume everything interacts with everything: scale by full number for all inputs/outputs
-    
-    EB
-    consider same and neighboring wedges
-        
-    #Have now included the observation that a D7 does not get input in a region where it gives outputs.
     '''
     
     connectionEstimate = {}
@@ -57,23 +46,6 @@ def get_connection_estimate_PB(vol):
     PEG_in = np.mean(countsin)
     PEG_out = np.mean(countsout) 
 
-    '''
-    countsin = []
-    countsout = []
-    for PEN1 in vol.groups['PEN1']:
-        countsin.append(vol.connectionDistribution['input'][PEN1.neuron_name]['tot'])
-        countsout.append(vol.connectionDistribution['output'][PEN1.neuron_name]['tot'])
-    PEN1_in = np.mean(countsin)
-    PEN1_out = np.mean(countsout)
-
-    countsin = []
-    countsout = []
-    for PEN2 in vol.groups['PEN2']:
-        countsin.append(vol.connectionDistribution['input'][PEN2.neuron_name]['tot'])
-        countsout.append(vol.connectionDistribution['output'][PEN2.neuron_name]['tot'])
-    PEN2_in = np.mean(countsin)
-    PEN2_out = np.mean(countsout)
-    '''
     
     EPGs = [ ['EPG-6Ra', 'EPG-6Rb'], ['EPG-5Ra', 'EPG-5Rb', 'EPG-5Rc'],\
             ['EPG-5La', 'EPG-5Lb', 'EPG-5Lc'], ['EPG-6La', 'EPG-6Lb'] ]   
@@ -294,7 +266,7 @@ def get_connection_estimate_PB(vol):
 def get_connection_estimate_NO(vol):
     #we assume that there is zero compartmentalization and we thus only consider left vs right separation
     
-    avgCon = {'PEN1':{}, 'PEN2':{}, 'NO-LAL-G':{}}
+    avgCon = {'PEN1':{}, 'PEN2':{}}
     for k1, g1 in avgCon.items():
         g1['input'] = {}
         g1['output'] = {}
@@ -307,7 +279,7 @@ def get_connection_estimate_NO(vol):
     
     PEN_avgcounts = {}
     
-    for PEN in ['PEN1', 'PEN2']:#we have NO-LAL-Gall in the same noduli as PENx-yR. Consider PEN, PEN2 separately
+    for PEN in ['PEN1', 'PEN2']:#Consider PEN, PEN2 separately
         
         counts1, counts2 = [], [] #get total inputs/outputs
         for P in vol.groups[PEN]:
@@ -354,203 +326,7 @@ def get_connection_estimate_NO(vol):
     
     return connectionEstimate, avgCon
 
-def get_connection_estimate_EB(vol):
-    '''
-    Need to have a hard think about this...
-    
-    PEN6R/PEN6L / EPG5L/EPG5R in ta
-    PEN5R/PEN7L / EPG6L in tb
-    PEN5L/PEN7R / EPG6R in tc
-    
-    Could consider explicitly... label a, b, c
-    
-    Divide into the three regions for which we have data.
-    Consider interactions within region and to neighboring region. Consider these two types of interactions separately
-    Let the ring neurons connect equally to everything: simply do by type over all combinations
-    Consider GE to be in wedge 3
-    
-    How many cross-interactions do we have???
-    
-    2 GE per wedge, 2 PEN1, 2 PEN2, 2 PEG, 6 EPG
-    
-    #once I have all this stuff working I should try assuming we have fully traced all PENs, EPGs, PEGs in Wb and see how this compares to the avg number
-    
-    '''
-    
-    avgCon = {'GE':{}, 'EPG':{}, 'PEG':{}, 'PEN1':{}, 'PEN2':{}}#, 'R':{}}
-    for k1, g1 in avgCon.items():
-        g1['input'] = {}
-        g1['output'] = {}
-    
-    connectionEstimate = {}
-    connections_in = copy.deepcopy(vol.connectionDistribution['input'])
-    connections_out = copy.deepcopy(vol.connectionDistribution['output'])
-    
-    #Consider first same wedge interactions for EPG
-    
-    EPGa = ['EPG-6La', 'EPG-6Lb'] #wedge 1
-    EPGb = ['EPG-5Ra', 'EPG-5Rb', 'EPG-5Rc', 'EPG-5La', 'EPG-5Lb', 'EPG-5Lc'] #wedge 2
-    EPGc = ['EPG-6Ra', 'EPG-6Rb'] #wedge 3
-    EPGs = [EPGa, EPGb, EPGc]
-    
-    PEN1a, PEN1b, PEN1c = ['PEN1-5R', 'PEN1-7L'], ['PEN1-6Ra', 'PEN1-6Rb', 'PEN1-6La', 'PEN1-6Lb'], ['PEN1-7R', 'PEN1-5L']
-    PEN1s = [PEN1a, PEN1b, PEN1c]
-    PEN2a, PEN2b, PEN2c = ['PEN2-5R', 'PEN2-7L'], ['PEN2-6Ra', 'PEN2-6Rb', 'PEN2-6La', 'PEN2-6Lb'], ['PEN2-7R', 'PEN2-5L']
-    PEN2s = [PEN2a, PEN2b, PEN2c]
-    
-    PEGa, PEGb, PEGc = ['PEG-6L'], ['PEG-5R', 'PEG-5L'], ['PEG-6R']
-    PEGs = [PEGa, PEGb, PEGc]
-    
-    GEa, GEb, GEc = [], [], ['GE-r1']
-    GEs = [GEa, GEb, GEc]
-    
-    Rs = ['Ra', 'Rb', 'Rc', 'Rd', 'Re', 'Rf', 'Rg']
-    
-    groups = {'EPG': EPGs, 'PEN1': PEN1s, 'PEN2': PEN2s, 'PEG': PEGs, 'GE': GEs}
-    
-    #first get EPG self interactions in wedge
-    
-    for label, group in groups.items():
-        
-        print('considering new group', label) #this is type of neuron
-        
-        condict = {'to':{'s':{}, 'n':{}}, 'from': {'s':{},'n':{}}} #keep track of connections. s is same, n is neighboring
-       
-        #first get selfinteractions within wedge
-        totin, totout = [], []
-        countsin = []
-        countsout = []
 
-        for wedge in group: #each 'wedge' is a list of neurons
-            for N1 in wedge: #consider all neurons
-                totin.append(vol.connectionDistribution['input'][N1]['tot']) #get mean inputs and outputs for this type of neuron
-                totout.append(vol.connectionDistribution['output'][N1]['tot'])
-                for N2 in wedge: #interacting with all other neurons
-                    if N1 != N2: #no self-interaction
-                        countsout.append( len( vol.cn_tables[N1][N2] )/vol.connectionDistribution['output'][N1]['tot']  ) #add output
-                        countsin.append( len( vol.cn_tables[N2][N1] )/vol.connectionDistribution['input'][N1]['tot']  ) #add input
-                        
-        condict['to']['s'][label] = np.mean(countsout) #same wedge
-        condict['from']['s'][label] = np.mean(countsin)
-        avgCon[label]['input'][label+'_s']=np.mean(countsin)*np.mean(totin)
-        avgCon[label]['output'][label+'_s']=np.mean(countsout)*np.mean(totout)
-    
-        #Now get self-interaction in neighboring wedges
-        countsin = []
-        countsout = []
-        for inds in [ [0,1], [1,0], [1,2], [2,1] ]:
-            w1, w2 = group[inds[0]], group[inds[1]] #w1, w2 is now a pair of lists of neurons in neighboring wedges
-            for N1 in w1:
-                for N2 in w2:
-                    countsout.append( len( vol.cn_tables[N1][N2] )/vol.connectionDistribution['output'][N1]['tot']  ) #add output
-                    countsin.append( len( vol.cn_tables[N2][N1] )/vol.connectionDistribution['input'][N1]['tot']  ) #add input
-                    
-        condict['to']['n'][label] = np.mean(countsout) #neighboring wedge
-        condict['from']['n'][label] = np.mean(countsin) #we get a zero for GE-GE since this is empty list, gives nan
-        avgCon[label]['input'][label+'_n']=np.mean(countsin)*np.mean(totin)
-        avgCon[label]['output'][label+'_n']=np.mean(countsout)*np.mean(totout)
-        #now done with all self-interacions. Add them to our connectivity dicts
-        
-        if label == 'EPG': Ns = 54/8 #number of neurons in a wedge; number of neighboring neurons is Nn = 2Ns
-        elif label == 'PEN1' or label == 'PEN2' or label =='PEG' or label =='GE': Ns = 2
-        else: print('something wrong, does not recognize', label)
-        
-        for wedge in group:
-            for N in wedge: 
-                connections_in[N][label] = \
-                    Ns * condict['from']['s'][label] * vol.connectionDistribution['input'][N]['tot'] +\
-                    2*Ns * condict['from']['n'][label] * vol.connectionDistribution['input'][N]['tot']
-                connections_out[N][label] = \
-                    Ns * condict['to']['s'][label] * vol.connectionDistribution['output'][N]['tot'] +\
-                    2*Ns * condict['to']['n'][label] * vol.connectionDistribution['output'][N]['tot']
-        
-        #now do the cross-interactions with neurons from another group
-        for label2, group2 in groups.items():
-            if label2 != label: #we've already considered self-interactions explicitly
-                
-                #do same wedge interactions first
-                countsin = []
-                countsout = []
-                for i in range(3):
-                    t1s = group[i]
-                    t2s = group2[i] #neurons in same wedge of different type
-                    
-                    for N1 in t1s:
-                        for N2 in t2s:
-                            countsout.append( len( vol.cn_tables[N1][N2] )/vol.connectionDistribution['output'][N1]['tot']  ) #add output
-                            countsin.append( len( vol.cn_tables[N2][N1] )/vol.connectionDistribution['input'][N1]['tot']  ) #add input
-        
-                condict['to']['s'][label2] = np.mean(countsout) #same wedge
-                condict['from']['s'][label2] = np.mean(countsin)
-                avgCon[label]['input'][label2+'_s']=np.mean(countsin)*np.mean(totin)
-                avgCon[label]['output'][label2+'_s']=np.mean(countsout)*np.mean(totout)
-                
-                #now do neighboring wedge interactions
-                
-                for inds in [ [0,1], [1,0], [1,2], [2,1] ]:
-                    t1s = group[inds[0]]
-                    t2s = group2[inds[1]]
-                    for N1 in t1s:
-                        for N2 in t2s:
-                            countsout.append( len( vol.cn_tables[N1][N2] )/vol.connectionDistribution['output'][N1]['tot']  ) #add output
-                            countsin.append( len( vol.cn_tables[N2][N1] )/vol.connectionDistribution['input'][N1]['tot']  ) #add input
-        
-                condict['to']['n'][label2] = np.mean(countsout) #neighboring wedge
-                condict['from']['n'][label2] = np.mean(countsin)
-                avgCon[label]['input'][label2+'_n']=np.mean(countsin)*np.mean(totin)
-                avgCon[label]['output'][label2+'_n']=np.mean(countsout)*np.mean(totout)
-                
-                #need to add data as appropriate
-                #cons_from = 0
-                if label2 == 'EPG': Ns = 54/8 #number of neurons in a wedge; number of neighboring neurons is Nn = 2Ns
-                elif label2 == 'PEN1' or label2 == 'PEN2' or label2 =='PEG' or label2 =='GE': Ns = 2
-                else: print('something wrong, does not recognize', label2)
-                
-                
-                for wedge in group:
-                    for N in wedge: 
-                        connections_in[N][label2] = \
-                                                Ns * condict['from']['s'][label2] * vol.connectionDistribution['input'][N]['tot'] +\
-                                                2*Ns * condict['from']['n'][label2] * vol.connectionDistribution['input'][N]['tot']
-                        connections_out[N][label2] = \
-                                                Ns * condict['to']['s'][label2] * vol.connectionDistribution['output'][N]['tot'] +\
-                                                2*Ns * condict['to']['n'][label2] * vol.connectionDistribution['output'][N]['tot']
-                
-        #finally consider interactions with the rings neurons (we only need input and output from our neurons of interest here). Consider these explicitly
-            
-        countsin = []
-        countsout = []
-        for wedge in group:
-            for N1 in wedge:
-                for R in Rs:
-                    countsout.append( len( vol.cn_tables[N1][R] )/vol.connectionDistribution['output'][N1]['tot']  ) #add output
-                    countsin.append( len( vol.cn_tables[R][N1] )/vol.connectionDistribution['input'][N1]['tot']  ) #add input
-                        
-        condict['to']['s']['R'] = np.mean(countsout) #no s/n label necessary but we'll label s for convenience (maintains data structure)
-        condict['from']['s']['R'] = np.mean(countsin)
-        avgCon[label]['input']['R']=np.mean(countsin)*np.mean(totin)
-        avgCon[label]['output']['R']=np.mean(countsout)*np.mean(totout)
-
-        #aaaaand then we add the data to our connection dicts for further use
-        print('in', countsout)
-        print('out', countsin)
-        print('means', 100*np.mean(countsin), 100*np.mean(countsout))
-        print('\n')
-        for wedge in group:
-            for N in wedge: 
-                #we assume 100 ring neurons
-                connections_in[N]['R'] = 100 * condict['from']['s']['R'] * vol.connectionDistribution['input'][N]['tot']
-                connections_out[N]['R'] = 100 * condict['to']['s']['R'] * vol.connectionDistribution['output'][N]['tot']
-                
-        print(connections_in[N]['R'])
-        
-    connections_in['GE-r1']['GE']=5*16 #add this manually since it's the only self-interaction. 16 GEs, 5 self-interactions
-    connections_out['GE-r1']['GE']=5*16
-
-    connectionEstimate['input'] = connections_in
-    connectionEstimate['output'] = connections_out
-    
-    return connectionEstimate, avgCon
 
 
 def get_connection_estimate_EB_wedge(vol):
@@ -568,22 +344,8 @@ def get_connection_estimate_EB_wedge(vol):
     Divide into the three tiles for which we have data.
     Consider interactions within tile and to neighboring tile. Consider these two types of interactions separately
     Let the ring neurons connect equally to everything: simply do by type over all combinations
-    Consider GE to be in wedge EPG-5R (a2) only adjacent is EPG-5L
     
-    How many cross-interactions do we have???
-    
-    2 GE per tile, 2 PEN1, 2 PEN2, 2 PEG, 6 EPG
-    
-    Treat everything by tile except for EPG, GE which is treated by wedge...
-    
-    For GE we will assume that it's in wedge 21, where we don't have any EPG tracing.
-    We will assume that the 21:12 GE-EPG ratio is equal to the
-    2:1 PEN1 ratio.
-    
-    In reality this will not be a great assumption since GE overlaps somewhat with w12.
-    However, given the lack of tracing and only having 1 GE, it is VERY hard to estimate
-    how much of an error we're making and it's not immediately obvious how to do it better
-    
+    2 PEN1 per tile, 2 PEN2, 2 PEG, 6 EPG    
     '''
     
     avgCon = {'EPG':{}, 'PEG':{}, 'PEN1':{}, 'PEN2':{}}#, 'R':{}}
@@ -596,11 +358,6 @@ def get_connection_estimate_EB_wedge(vol):
     connections_out = copy.deepcopy(vol.connectionDistribution['output'])
     
     #Consider first same wedge interactions for EPG
-    
-    EPGa = ['EPG-6La', 'EPG-6Lb'] #tile 1
-    EPGb = ['EPG-5Ra', 'EPG-5Rb', 'EPG-5Rc', 'EPG-5La', 'EPG-5Lb', 'EPG-5Lc'] #tile 2
-    EPGc = ['EPG-6Ra', 'EPG-6Rb'] #tile 3
-    EPGs = [EPGa, EPGb, EPGc] #at the level of tilles
     
     EPGa1 = ['EPG-6La', 'EPG-6Lb'] #tile 1
     EPGb1 = ['EPG-5La', 'EPG-5Lb', 'EPG-5Lc'] #tile 2
@@ -674,13 +431,13 @@ def get_connection_estimate_EB_wedge(vol):
                     countsin.append( len( vol.cn_tables[N2][N1] )/vol.connectionDistribution['input'][N1]['tot']  ) #add input
                     
         condict['to']['n'][label] = np.mean(countsout) #neighboring wedge
-        condict['from']['n'][label] = np.mean(countsin) #we get a zero for GE-GE since this is empty list, gives nan
+        condict['from']['n'][label] = np.mean(countsin)
         avgCon[label]['input'][label+'_n']=np.mean(countsin)*np.mean(totin)
         avgCon[label]['output'][label+'_n']=np.mean(countsout)*np.mean(totout)
         #now done with all self-interacions. Add them to our connectivity dicts
         
         if label == 'EPG': Ns = 54/16 #number of neurons in a wedge; number of neighboring neurons is Nn = 2Ns
-        elif label == 'PEN1' or label == 'PEN2' or label =='PEG' or label =='GE': Ns = 2 #number of neurons in a tile (16/8)
+        elif label == 'PEN1' or label == 'PEN2' or label =='PEG': Ns = 2 #number of neurons in a tile (16/8)
         else: print('something wrong, does not recognize', label)
         
         for wedge in group:
@@ -747,7 +504,7 @@ def get_connection_estimate_EB_wedge(vol):
                 if label2 == 'EPG':
                     Ns = 54/8 #number of neurons in a tile
                     Nn = Ns #for EPGs we only have Ns neighboring neurons in adjacent wedges
-                elif label2 == 'PEN1' or label2 == 'PEN2' or label2 =='PEG' or label2 =='GE':
+                elif label2 == 'PEN1' or label2 == 'PEN2' or label2 =='PEG':
                     Ns = 2 #number of neurons in a tile
                     Nn = 2*Ns #for tile neurons we ahve twice as many neighboring neurons
                 else: print('something wrong, does not recognize', label2)

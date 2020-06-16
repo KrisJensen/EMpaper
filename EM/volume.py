@@ -9,8 +9,6 @@ import copy
 from pymaid import *
 import numpy as np
 import matplotlib.pyplot as plt
-import requests
-from requests.auth import HTTPBasicAuth
 import pickle
 plt.rcParams['pdf.fonttype'] = 42
 
@@ -127,7 +125,6 @@ class volume():
     
     def split(self, neuron, cut1, cut2, rev=False, reverse=False, show=True, Type ='None'):
         '''split a PEN/EPG neuron into PB, EB and G/NO segments given treenode ids to cut
-        cut1 is for PB (proximal) cut2 for G/NO (distal)
         'Type' is an ad-hoc parameter that tells us which part of the split corresponds to which neuropil
         this is necessary because we use pymaids cut_neuron function which does not take neuropil identities
         into account'''
@@ -135,7 +132,7 @@ class volume():
         neuron = self.get_neuron(neuron)
         print('\ncutting '+neuron.neuron_name)
         
-        if Type == 'None': #very ad hoc to cut our specific neurons
+        if Type == 'None': #somewhat ad hoc to cut our specific neurons of interest
             N_PB = cut_neuron(neuron, cut_node=cut1 )[0]
             N_G = cut_neuron(neuron, cut_node=cut2 )[1]
             N_EB = cut_neuron(cut_neuron(neuron, cut_node=cut1 )[1], cut_node=cut2 )[0]
@@ -145,12 +142,12 @@ class volume():
             N_G = cut_neuron(neuron, cut_node=cut2 )[0]
             N_EB = cut_neuron(cut_neuron(neuron, cut_node=cut1 )[0], cut_node=cut2 )[1]
 
-        if Type == 'rev': #sometimes the ordering is different for some reason
+        if Type == 'rev':
             N_G = cut_neuron(neuron, cut_node=cut1 )[1]
             N_PB = cut_neuron(neuron, cut_node=cut2 )[0]
             N_EB = cut_neuron(cut_neuron(neuron, cut_node=cut1 )[0], cut_node=cut2 )[1]
             
-        if Type =='fj': #quick-fixes for when the origin node is somewhere else
+        if Type =='fj': 
             N_PB = cut_neuron(neuron, cut_node=cut1 )[0]
             N_G = cut_neuron(neuron, cut_node=cut2 )[0]
             N_EB = cut_neuron(cut_neuron(neuron, cut_node=cut1 )[1], cut_node=cut2 )[1]
@@ -159,11 +156,6 @@ class volume():
             N_G = cut_neuron(neuron, cut_node=cut2 )[0]
             N_PB = cut_neuron(neuron, cut_node=cut1 )[0]
             N_EB = cut_neuron(cut_neuron(neuron, cut_node=cut1 )[1], cut_node=cut2 )[1]
-            
-        if Type =='NLG': #quick-fixes for when the origin node is somewhere else
-            N_PB = cut_neuron(neuron, cut_node=cut1 )[1]
-            N_EB = cut_neuron(cut_neuron(neuron, cut_node=cut1 )[0], cut_node=cut2 )[1]
-            N_G = cut_neuron(neuron, cut_node=cut2 )[0]
             
         if reverse: #need to flip the identity
             temp1 = copy.copy(N_G)
@@ -505,11 +497,9 @@ class volume():
         for n1, dic in self.cn_tables.items():
             for n2, cons in dic.items():
                 for con in cons:
-                    if not ( ('GE' in n1) or ('GE' in n2) or ('LAL' in n1) or ('LAL' in n2) ):
-                        out[n1].append( con[0] )
-                        inp[n2].append( con[1] )
-                        if con[1] == 3785136: print(n1, n2, con)
-                        tot.append( ( con[0], con[1] ) )
+                    out[n1].append( con[0] )
+                    inp[n2].append( con[1] )
+                    tot.append( ( con[0], con[1] ) )
         self.neuron_inputs = inp
         self.neuron_outputs = out
         self.all_cons = tot

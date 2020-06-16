@@ -4,7 +4,6 @@
 Created on Fri Jul 13 11:33:09 2018
 @author: loaner
 """
-import pandas as pd
 import networkx as nx
 from pymaid import *
 import copy
@@ -44,7 +43,6 @@ class treeNeuron():
                     newroots.append(root)
             self.rootnode = newroots  #make list of rootnodes even if a subcompartment has multiple
         #rootnode has predecessors but no successors. Go to predecessors
-        #self.diameter = lambda x: max(20, (500-(500-20)*x/100000))/1000 #gives diameter in um vs. dist from rootnode with mincap at 20 nm 
         self.graph = nx.DiGraph()
         self.graph.add_node(self.graph_root, Type = 'graph_root', neuron = self.neuron.neuron_name, dist = '0.0',\
                             diameter = str(self.diameter( self.neuron, self.graph_root, self.rootnode)), loc = np.array([0, 0, 0]) )
