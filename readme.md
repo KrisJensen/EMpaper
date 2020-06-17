@@ -3,6 +3,7 @@ The EM/ code uses pymaid 0.89, the NEURON/ code uses neuron with python 2.7
 
 pymaid 0.89 is included here. To use:\
 conda create -n turner-evans python=3.6\
+conda activate turner-evans\
 cd pymaid-0.89/\
 python setup.py install\
 pip install pandas==1.0.4
