@@ -9,7 +9,7 @@ pip install pandas==1.0.4
 
 ### EM/
 
-_pickled_data/_ - locally saved information from Catmaid for our neurons of interest.
+_pickled_neurons/_ - locally saved information from Catmaid for our neurons of interest.
 
 _volume.py_ - class for working with collections of neurons using pymaid.\
 _buildCX.py_ - constructs a 'volume' object with our neurons of interest from the data in pickled_data.\
